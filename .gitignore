@@ -1,0 +1,29 @@
+# Environment files
+.env
+.env.*
+!.env.example
+server/.env
+
+# Dependencies and build output
+node_modules/
+dist/
+dist-ssr/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+ai_service/venv/
+
+# Logs
+*.log
+
+# Local tooling
+.claude/
+.codex/
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/
