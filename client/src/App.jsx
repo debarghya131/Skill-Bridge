@@ -1,18 +1,22 @@
 import { Routes, Route } from 'react-router-dom'
 import LandingPage from './landingpage/LandingPage'
 import StudentAuth from './student/studentAuth'
-import StudentOnboarding from './student/StudentOnboarding'
+import StudentDashboard from './student/student'
+import Taskpage from './student/task/Taskpage'
+import TrustScoreCriteria from './student/trustscoreCriteria'
 import CompanyAuth from './company/companyAuth'
-import CompanyOnboarding from './company/CompanyOnboarding'
+import CompanyDashboard from './company/company'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/student" element={<StudentAuth />} />
-      <Route path="/student/onboarding" element={<StudentOnboarding />} />
+      <Route path="/student/dashboard" element={<StudentDashboard />} />
+      <Route path="/student/task" element={<Taskpage />} />
+      <Route path="/student/trustscore-criteria" element={<TrustScoreCriteria />} />
       <Route path="/company" element={<CompanyAuth />} />
-      <Route path="/company/onboarding" element={<CompanyOnboarding />} />
+      <Route path="/company/dashboard" element={<CompanyDashboard />} />
     </Routes>
   )
 }

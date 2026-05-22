@@ -72,7 +72,7 @@ export default function CompanyAuth() {
   }
 
   const handleSignup = () => {
-    if (validateSignup()) navigate('/company/onboarding')
+    if (validateSignup()) navigate('/company/dashboard', { state: { companyName: form.companyName, location: form.location } })
   }
 
   const handleSignin = () => {
@@ -80,7 +80,7 @@ export default function CompanyAuth() {
     if (!form.signInContact.trim()) e.signInContact = 'Email or phone is required'
     if (!form.signInPassword) e.signInPassword = 'Password is required'
     setErrors(e)
-    if (Object.keys(e).length === 0) navigate('/company/onboarding')
+    if (Object.keys(e).length === 0) navigate('/company/dashboard', { state: { companyName: form.signInContact, location: '' } })
   }
 
   return (

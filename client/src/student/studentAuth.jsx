@@ -78,7 +78,7 @@ export default function StudentAuth() {
   }
 
   const handleSignup = () => {
-    if (validateSignup()) navigate('/student/onboarding')
+    if (validateSignup()) navigate('/student/dashboard', { state: { name: form.name, trustScore: Math.floor(Math.random() * 200) + 720 } })
   }
 
   const handleSignin = () => {
@@ -86,7 +86,7 @@ export default function StudentAuth() {
     if (!form.signInContact.trim()) e.signInContact = 'Email or phone is required'
     if (!form.signInPassword) e.signInPassword = 'Password is required'
     setErrors(e)
-    if (Object.keys(e).length === 0) navigate('/student/onboarding')
+    if (Object.keys(e).length === 0) navigate('/student/dashboard', { state: { name: form.signInContact, trustScore: Math.floor(Math.random() * 200) + 720 } })
   }
 
   return (
