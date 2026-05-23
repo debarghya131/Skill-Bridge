@@ -3,72 +3,27 @@ import { useNavigate } from 'react-router-dom'
 
 const ACTION_WARNING = 'AI can detect cheating. Copy-paste, no typing, very fast typing, tab switching, idle-then-submit, same answers, multiple logins, rapid submissions, DevTools, and camera signals can reduce your TrustScore.'
 
-const OPPORTUNITIES = [
-  {
-    id: 1,
-    title: 'Frontend Internship',
-    company: 'CodeNest Solutions',
-    companyInitial: 'C',
-    companyColor: '#6366F1',
-    location: 'Remote',
-    stipend: '₹10,000 / month',
-    deadline: 'Apr 25, 2026',
-    sentOn: '2 hours ago',
-    message: 'Hi! We reviewed your React and UI/UX Design profile on SkillBridge and were impressed by your verified skill levels. We would love to have you join our frontend team for a 3-month internship.',
-    matchedSkills: ['React', 'UI/UX Design'],
-    duration: '3 months',
-    type: 'Internship',
-  },
-  {
-    id: 2,
-    title: 'Social Media Content Role',
-    company: 'Urban Threads',
-    companyInitial: 'U',
-    companyColor: '#EC4899',
-    location: 'Kolkata',
-    stipend: '₹6,000 / month',
-    deadline: 'Apr 28, 2026',
-    sentOn: '1 day ago',
-    message: 'We came across your Content Marketing profile and think you would be a great fit for managing our Instagram and Facebook presence. We are a growing fashion brand looking for fresh creative talent.',
-    matchedSkills: ['Content Marketing', 'SEO'],
-    duration: '2 months',
-    type: 'Part-Time GIG',
-  },
-  {
-    id: 3,
-    title: 'Data Analysis Project',
-    company: 'Insight Labs',
-    companyInitial: 'I',
-    companyColor: '#0891B2',
-    location: 'Bengaluru',
-    stipend: '₹12,000 / month',
-    deadline: 'Apr 30, 2026',
-    sentOn: '3 days ago',
-    message: 'Your SQL and Power BI skills caught our attention. We have a 2-month data analysis project involving sales dashboards and customer segmentation. Your TrustScore and verified badges make you a strong candidate.',
-    matchedSkills: ['SQL', 'Power BI'],
-    duration: '2 months',
-    type: 'Project GIG',
-  },
-]
-
 const TYPE_META = {
-  'Internship':    { bg: '#EFF6FF', color: '#1D4ED8' },
+  Internship: { bg: '#EFF6FF', color: '#1D4ED8' },
   'Part-Time GIG': { bg: '#F3E8FF', color: '#7C3AED' },
-  'Project GIG':   { bg: '#D1FAE5', color: '#065F46' },
+  'Project GIG': { bg: '#D1FAE5', color: '#065F46' },
 }
 
-export default function Opportunity({ onAcceptOpportunity }) {
+export default function Opportunity({
+  opportunities = [],
+  onAcceptOpportunity = async () => {},
+  onDeclineOpportunity = () => {},
+}) {
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(null)
-  const [accepted, setAccepted] = useState([])
-  const [declined, setDeclined] = useState([])
 
-  const toggle = (id) => setExpanded(e => e === id ? null : id)
+  const toggle = (id) => setExpanded(current => current === id ? null : id)
+  const visibleOpportunities = opportunities.filter(item => item.status !== 'declined')
+  const newCount = visibleOpportunities.filter(item => item.status !== 'accepted').length
 
   return (
     <div>
-      {/* Header banner */}
-      <div style={{
+      <div className="responsive-stack" style={{
         background: 'linear-gradient(135deg, #1E1B4B, #312E81)',
         borderRadius: 14, padding: '16px 22px', marginBottom: 18,
         display: 'flex', alignItems: 'center', gap: 14,
@@ -80,15 +35,15 @@ export default function Opportunity({ onAcceptOpportunity }) {
             These companies personally reviewed your SkillBridge profile and chose to reach out to you.
           </div>
         </div>
-        <div style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.12)', borderRadius: 100, padding: '5px 14px', color: 'white', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
-          {OPPORTUNITIES.length - declined.length} New
+        <div className="responsive-opportunity-badge" style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.12)', borderRadius: 100, padding: '5px 14px', color: 'white', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
+          {newCount} New
         </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {OPPORTUNITIES.filter(o => !declined.includes(o.id)).map(item => {
+        {visibleOpportunities.map(item => {
           const isExpanded = expanded === item.id
-          const isAccepted = accepted.includes(item.id)
+          const isAccepted = item.status === 'accepted'
           const typeMeta = TYPE_META[item.type] || { bg: 'var(--bg)', color: 'var(--muted)' }
 
           return (
@@ -98,9 +53,7 @@ export default function Opportunity({ onAcceptOpportunity }) {
               boxShadow: isAccepted ? '0 0 0 3px #D1FAE5' : 'none',
               overflow: 'hidden', transition: 'all 0.2s',
             }}>
-              {/* Top row */}
-              <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                {/* Company avatar */}
+              <div className="responsive-stack" style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
                 <div style={{
                   width: 44, height: 44, borderRadius: 10, flexShrink: 0,
                   background: item.companyColor,
@@ -120,23 +73,22 @@ export default function Opportunity({ onAcceptOpportunity }) {
                     🏢 {item.company} · 📍 {item.location} · 🕐 Sent {item.sentOn}
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {item.matchedSkills.map(s => (
-                      <span key={s} style={{ fontSize: 11, fontWeight: 700, background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 9px', borderRadius: 100 }}>
-                        ✓ {s}
+                    {item.matchedSkills.map(skill => (
+                      <span key={skill} style={{ fontSize: 11, fontWeight: 700, background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 9px', borderRadius: 100 }}>
+                        ✓ {skill}
                       </span>
                     ))}
                     <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 4 }}>matched your profile</span>
                   </div>
                 </div>
 
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div className="responsive-opportunity-meta" style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--primary)' }}>{item.stipend}</div>
                   <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>⏳ Deadline: {item.deadline}</div>
                   <div style={{ fontSize: 11, color: 'var(--muted)' }}>📅 {item.duration}</div>
                 </div>
               </div>
 
-              {/* Expandable message */}
               <div style={{ padding: '0 20px 14px 20px' }}>
                 {isExpanded && (
                   <div style={{
@@ -150,14 +102,13 @@ export default function Opportunity({ onAcceptOpportunity }) {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className="responsive-opportunity-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   {!isAccepted ? (
                     <>
                       <button
-                        onClick={() => {
-                          setAccepted(p => [...p, item.id])
+                        onClick={async () => {
+                          await onAcceptOpportunity(item)
                           setExpanded(null)
-                          onAcceptOpportunity?.(item)
                           navigate('/student/task', {
                             state: {
                               taskType: 'company-interview',
@@ -172,7 +123,7 @@ export default function Opportunity({ onAcceptOpportunity }) {
                         Accept for Interview Task
                       </button>
                       <button
-                        onClick={() => setDeclined(p => [...p, item.id])}
+                        onClick={() => onDeclineOpportunity(item)}
                         style={{
                           padding: '7px 14px', fontSize: 13, fontWeight: 600,
                           background: 'var(--bg)', color: 'var(--muted)',
@@ -192,6 +143,7 @@ export default function Opportunity({ onAcceptOpportunity }) {
                   )}
                   <button
                     onClick={() => toggle(item.id)}
+                    className="responsive-opportunity-message-button"
                     style={{
                       marginLeft: 'auto', padding: '7px 14px', fontSize: 12, fontWeight: 600,
                       background: 'none', color: 'var(--primary)',
@@ -206,7 +158,7 @@ export default function Opportunity({ onAcceptOpportunity }) {
           )
         })}
 
-        {OPPORTUNITIES.every(o => declined.includes(o.id)) && (
+        {visibleOpportunities.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontSize: 14 }}>
             No pending invites. Check back later for new company outreach.
           </div>

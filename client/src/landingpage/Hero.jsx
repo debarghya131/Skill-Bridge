@@ -33,7 +33,7 @@ export default function Hero() {
         borderRadius: '50%', pointerEvents: 'none',
       }} />
 
-      <div className="container" style={{
+      <div className="container landing-hero-grid" style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: '60px',
@@ -42,7 +42,7 @@ export default function Hero() {
         width: '100%',
       }}>
         {/* Left: Text content */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', minWidth: 0 }}>
           <div className="animate-fadeup">
             <span className="badge">
               <span style={{ width: 8, height: 8, background: 'var(--success)', borderRadius: '50%', display: 'inline-block' }} />
@@ -79,7 +79,7 @@ export default function Hero() {
           </p>
 
           {/* CTA Buttons */}
-          <div className="animate-fadeup delay-3" style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="animate-fadeup delay-3 landing-hero-link-row" style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
             <a href="#features" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: 'var(--white)',
@@ -97,7 +97,7 @@ export default function Hero() {
             </a>
           </div>
 
-          <div className="animate-fadeup delay-3" style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+          <div className="animate-fadeup delay-3 landing-hero-actions" style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
             <button className="btn-primary" style={{ fontSize: 16, padding: '14px 32px' }}
               onClick={() => navigate('/student')}>
               🎓 Get Started
@@ -111,7 +111,7 @@ export default function Hero() {
           </div>
 
           {/* Stats */}
-          <div className="animate-fadeup delay-4" style={{
+          <div className="animate-fadeup delay-4 landing-hero-stats" style={{
             display: 'flex', gap: '32px', marginTop: '8px',
             paddingTop: '28px', borderTop: '1px solid var(--border)',
           }}>
@@ -125,7 +125,7 @@ export default function Hero() {
         </div>
 
         {/* Right: Visual card */}
-        <div className="animate-fadeup delay-2" style={{
+        <div className="animate-fadeup delay-2 landing-hero-visual-wrap" style={{
           display: 'flex', justifyContent: 'center', alignItems: 'center',
         }}>
           <HeroVisual />
@@ -137,9 +137,9 @@ export default function Hero() {
 
 function HeroVisual() {
   return (
-    <div style={{ position: 'relative', width: '100%', maxWidth: 420 }}>
+    <div className="landing-hero-visual" style={{ position: 'relative', width: '100%', maxWidth: 420 }}>
       {/* Main card */}
-      <div style={{
+      <div className="landing-hero-card" style={{
         background: 'var(--white)',
         borderRadius: 20,
         padding: '28px',
@@ -156,7 +156,7 @@ function HeroVisual() {
           }}>R</div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--dark)' }}>Riya Sharma</div>
-            <div style={{ fontSize: 13, color: 'var(--muted)' }}>B.Tech CSE · Ranchi University</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)' }}>B.Tech CSE</div>
           </div>
           <div style={{
             marginLeft: 'auto',
@@ -206,7 +206,7 @@ function HeroVisual() {
       </div>
 
       {/* Floating badge top-right */}
-      <div style={{
+      <div className="landing-hero-badge landing-hero-badge-top" style={{
         position: 'absolute', top: -16, right: -16,
         background: 'var(--accent)', color: 'white',
         padding: '10px 16px', borderRadius: 12,
@@ -219,7 +219,7 @@ function HeroVisual() {
       </div>
 
       {/* Floating badge bottom-left */}
-      <div style={{
+      <div className="landing-hero-badge landing-hero-badge-bottom" style={{
         position: 'absolute', bottom: -16, left: -16,
         background: 'var(--white)', color: 'var(--dark)',
         padding: '10px 16px', borderRadius: 12,

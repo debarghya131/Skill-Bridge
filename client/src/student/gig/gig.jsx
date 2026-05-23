@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Opportunity from './Opportunity'
-
-const BROWSE_GIGS = [
-  { id: 1, company: 'Gupta Electronics', location: 'Jamshedpur', workMode: 'On-site', title: 'React Dashboard', budget: '₹8,000/mo', match: 97, tags: ['React', 'UI/UX Design'], posted: '2 days ago' },
-  { id: 2, company: 'Meera Boutique', location: 'Patna', workMode: 'Hybrid', title: 'Instagram Content', budget: '₹4,500/mo', match: 94, tags: ['Canva', 'Social Media'], posted: '3 days ago' },
-  { id: 3, company: 'Sharma Traders', location: 'Ranchi', workMode: 'On-site', title: 'Excel Inventory System', budget: '₹3,000/project', match: 89, tags: ['Excel/Sheets', 'Data Analysis'], posted: '1 day ago' },
-  { id: 4, company: 'TechPrint Solutions', location: 'Dhanbad', workMode: 'Remote', title: 'WordPress Site Revamp', budget: '₹6,000/project', match: 85, tags: ['WordPress', 'UI/UX Design'], posted: '5 days ago' },
-  { id: 5, company: 'Arora Sweets', location: 'Lucknow', workMode: 'On-site', title: 'Menu Design & Branding', budget: '₹2,500/project', match: 78, tags: ['Canva', 'UI/UX Design'], posted: '1 day ago' },
-  { id: 6, company: 'Nexus IT Hub', location: 'Bhopal', workMode: 'Remote', title: 'Python Data Pipeline', budget: '₹9,000/mo', match: 91, tags: ['Python', 'Data Analysis'], posted: '4 hours ago' },
-]
+import {
+  acceptStudentOpportunity,
+  applyStudentGig,
+  declineStudentOpportunity,
+  fetchStudentGigs,
+  getStudentSessionToken,
+  saveStudentGig,
+  unsaveStudentGig,
+} from '../studentApi'
+import { buildDemoGigState } from './gigDemoData'
 
 const GIG_SUBNAV = [
   { key: 'opportunity', label: 'Opportunity', icon: '🎯' },
@@ -19,37 +20,17 @@ const GIG_SUBNAV = [
   { key: 'saved', label: 'Saved GIGs', icon: '🔖' },
 ]
 
-export default function GigCenter() {
-  const [sub, setSub] = useState('opportunity')
-  const [saved, setSaved] = useState([1, 4, 6])
-  const [applied, setApplied] = useState([2, 6])
+function EmptyState({ icon, msg }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '40vh', gap: 12 }}>
+      <div style={{ fontSize: 40 }}>{icon}</div>
+      <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 500 }}>{msg}</div>
+    </div>
+  )
+}
 
-  const toggleSave = (id) => setSaved(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
-  const applyGig = (id) => setApplied(p => p.includes(id) ? p : [...p, id])
-
-  const savedGigs = BROWSE_GIGS.filter(g => saved.includes(g.id))
-  const appliedGigs = BROWSE_GIGS.filter(g => applied.includes(g.id))
-  const activeGigs = [
-    {
-      id: 201,
-      company: 'PixelForge Studio',
-      location: 'Bengaluru',
-      workMode: 'Remote',
-      title: 'Landing Page UI Revamp',
-      budget: '₹7,500/project',
-      tags: ['UI/UX Design', 'React'],
-      posted: 'Started 2 days ago',
-      progress: 'Milestone 2 of 4',
-    },
-    ...appliedGigs.slice(0, 1),
-  ]
-  const completedGigs = [
-    { id: 99, company: 'Bajaj Kirana Store', location: 'Patna', workMode: 'On-site', title: 'Billing Sheet Setup', budget: '₹1,500/project', tags: ['Excel/Sheets'], completedOn: 'Mar 2025' },
-    { id: 100, company: 'BrightLeaf Media', location: 'Delhi', workMode: 'Hybrid', title: 'Instagram Reel Pack', budget: '₹3,200/project', tags: ['Canva', 'Content Marketing'], completedOn: 'Feb 2025' },
-    { id: 101, company: 'CodeTrail Labs', location: 'Remote', workMode: 'Remote', title: 'Portfolio Website Fixes', budget: '₹5,000/project', tags: ['React', 'UI/UX Design'], completedOn: 'Jan 2025' },
-  ]
-
-  const GigCard = ({ gig, showApply = false, showSave = false, status }) => (
+function GigCard({ gig, isApplied, isSaved, onApply, onToggleSave, showApply = false, showSave = false, status }) {
+  return (
     <div style={{
       background: 'var(--white)', borderRadius: 12, padding: '18px 22px',
       border: '1px solid var(--border)', transition: 'all 0.2s',
@@ -65,19 +46,19 @@ export default function GigCenter() {
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--dark)' }}>{gig.budget}</div>
-          {gig.match && <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>{gig.match}% match</div>}
-          {gig.progress && <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>{gig.progress}</div>}
-          {gig.completedOn && <div style={{ fontSize: 11, color: 'var(--muted)' }}>Done {gig.completedOn}</div>}
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--dark)' }}>{gig.budget}</div>
+          {gig.match ? <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>{gig.match}% match</div> : null}
+          {gig.progress ? <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>{gig.progress}</div> : null}
+          {gig.completedOn ? <div style={{ fontSize: 11, color: 'var(--muted)' }}>Done {gig.completedOn}</div> : null}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-        {gig.tags.map(t => (
-          <span key={t} style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '3px 10px', borderRadius: 100, fontSize: 12, fontWeight: 600 }}>{t}</span>
+        {gig.tags.map(tag => (
+          <span key={tag} style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '3px 10px', borderRadius: 100, fontSize: 12, fontWeight: 600 }}>{tag}</span>
         ))}
-        {gig.posted && <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--muted)', alignSelf: 'center' }}>🕐 {gig.posted}</span>}
+        {gig.posted ? <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--muted)', alignSelf: 'center' }}>🕐 {gig.posted}</span> : null}
       </div>
-      {status && (
+      {status ? (
         <div style={{ marginBottom: 10 }}>
           <span style={{
             padding: '3px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700,
@@ -87,40 +68,172 @@ export default function GigCenter() {
             {status === 'active' ? '⚡ In Progress' : status === 'applied' ? '📤 Applied' : status}
           </span>
         </div>
-      )}
+      ) : null}
       <div style={{ display: 'flex', gap: 8 }}>
-        {showApply && (
-          <button onClick={() => applyGig(gig.id)} className="btn-primary" style={{ padding: '7px 18px', fontSize: 13 }}
-            disabled={applied.includes(gig.id)}>
-            {applied.includes(gig.id) ? '✓ Applied' : 'Apply Now'}
+        {showApply ? (
+          <button onClick={() => onApply(gig.id)} className="btn-primary" style={{ padding: '7px 18px', fontSize: 13 }}
+            disabled={isApplied}>
+            {isApplied ? '✓ Applied' : 'Apply Now'}
           </button>
-        )}
-        {showSave && (
-          <button onClick={() => toggleSave(gig.id)} style={{
+        ) : null}
+        {showSave ? (
+          <button onClick={() => onToggleSave(gig.id)} style={{
             padding: '7px 14px', borderRadius: 7, border: '1.5px solid var(--border)',
-            background: saved.includes(gig.id) ? 'var(--primary-light)' : 'var(--white)',
-            color: saved.includes(gig.id) ? 'var(--primary)' : 'var(--muted)',
+            background: isSaved ? 'var(--primary-light)' : 'var(--white)',
+            color: isSaved ? 'var(--primary)' : 'var(--muted)',
             fontSize: 13, fontWeight: 600, cursor: 'pointer',
           }}>
-            {saved.includes(gig.id) ? '🔖 Saved' : '🔖 Save'}
+            {isSaved ? '🔖 Saved' : '🔖 Save'}
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   )
+}
 
-  const EmptyState = ({ icon, msg }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '40vh', gap: 12 }}>
-      <div style={{ fontSize: 40 }}>{icon}</div>
-      <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 500 }}>{msg}</div>
-    </div>
+export default function GigCenter() {
+  const [sub, setSub] = useState('opportunity')
+  const [isSubnavOpen, setIsSubnavOpen] = useState(false)
+  const [gigState, setGigState] = useState(buildDemoGigState())
+  const [sessionToken] = useState(() => getStudentSessionToken())
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadGigState() {
+      if (!sessionToken) {
+        return
+      }
+
+      try {
+        const result = await fetchStudentGigs(sessionToken)
+
+        if (!cancelled) {
+          setGigState(result.gigState)
+        }
+      } catch (error) {
+        // Keep demo fallback data in place if the backend fetch fails.
+      }
+    }
+
+    loadGigState()
+
+    return () => {
+      cancelled = true
+    }
+  }, [sessionToken])
+
+  const browseGigs = gigState.browseGigs || []
+  const opportunities = gigState.opportunities || []
+  const savedGigIds = gigState.savedGigIds || []
+  const appliedGigIds = gigState.appliedGigIds || []
+  const completedGigs = gigState.completedGigs || []
+  const activeGigBase = gigState.activeGigBase || []
+
+  const savedGigs = useMemo(
+    () => browseGigs.filter(gig => savedGigIds.includes(gig.id)),
+    [browseGigs, savedGigIds],
   )
+
+  const appliedGigs = useMemo(
+    () => browseGigs.filter(gig => appliedGigIds.includes(gig.id)),
+    [browseGigs, appliedGigIds],
+  )
+
+  const activeGigs = useMemo(
+    () => [...activeGigBase, ...appliedGigs.slice(0, 1)],
+    [activeGigBase, appliedGigs],
+  )
+  const activeSubnav = GIG_SUBNAV.find(item => item.key === sub) || GIG_SUBNAV[0]
+
+  const syncGigState = async (updater, requestFn) => {
+    if (!sessionToken) {
+      setGigState(current => updater(current))
+      return
+    }
+
+    try {
+      const result = await requestFn()
+      setGigState(result.gigState)
+    } catch (error) {
+      setGigState(current => updater(current))
+    }
+  }
+
+  const handleApply = async (gigId) => {
+    await syncGigState(
+      current => current.appliedGigIds.includes(gigId)
+        ? current
+        : { ...current, appliedGigIds: [...current.appliedGigIds, gigId] },
+      () => applyStudentGig(sessionToken, gigId),
+    )
+  }
+
+  const handleToggleSave = async (gigId) => {
+    const isSaved = savedGigIds.includes(gigId)
+
+    await syncGigState(
+      current => ({
+        ...current,
+        savedGigIds: isSaved
+          ? current.savedGigIds.filter(id => id !== gigId)
+          : [...current.savedGigIds, gigId],
+      }),
+      () => isSaved ? unsaveStudentGig(sessionToken, gigId) : saveStudentGig(sessionToken, gigId),
+    )
+  }
+
+  const handleAcceptOpportunity = async (opportunity) => {
+    await syncGigState(
+      current => ({
+        ...current,
+        opportunities: current.opportunities.map(item => (
+          item.id === opportunity.id ? { ...item, status: 'accepted' } : item
+        )),
+      }),
+      () => acceptStudentOpportunity(sessionToken, opportunity.id),
+    )
+  }
+
+  const handleDeclineOpportunity = async (opportunity) => {
+    await syncGigState(
+      current => ({
+        ...current,
+        opportunities: current.opportunities.map(item => (
+          item.id === opportunity.id ? { ...item, status: 'declined' } : item
+        )),
+      }),
+      () => declineStudentOpportunity(sessionToken, opportunity.id),
+    )
+  }
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 4, background: 'var(--white)', borderRadius: 12, padding: 6, border: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap' }}>
-        {GIG_SUBNAV.map(item => (
-          <button key={item.key} onClick={() => setSub(item.key)} style={{
+      <div className="responsive-pill-nav responsive-pill-nav-menu" style={{ display: 'flex', gap: 4, background: 'var(--white)', borderRadius: 12, padding: 6, border: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap' }}>
+        <div className="responsive-pill-nav-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>{activeSubnav.icon}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {activeSubnav.label}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="responsive-pill-nav-toggle"
+            onClick={() => setIsSubnavOpen(open => !open)}
+            aria-label="Toggle GIG navigation"
+            aria-expanded={isSubnavOpen}
+          >
+            ☰
+          </button>
+        </div>
+
+        <div className={`responsive-pill-nav-list${isSubnavOpen ? ' is-open' : ''}`}>
+          {GIG_SUBNAV.map(item => (
+          <button key={item.key} onClick={() => {
+            setSub(item.key)
+            setIsSubnavOpen(false)
+          }} style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '8px 16px', borderRadius: 8, border: 'none',
             background: sub === item.key ? 'var(--primary)' : 'transparent',
@@ -131,56 +244,112 @@ export default function GigCenter() {
           onMouseEnter={e => { if (sub !== item.key) e.currentTarget.style.background = 'var(--bg)' }}
           onMouseLeave={e => { if (sub !== item.key) e.currentTarget.style.background = 'transparent' }}>
             {item.icon} {item.label}
-            {item.key === 'applied' && appliedGigs.length > 0 && (
+            {item.key === 'applied' && appliedGigs.length > 0 ? (
               <span style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 100, padding: '0 6px', fontSize: 11, fontWeight: 800 }}>{appliedGigs.length}</span>
-            )}
-            {item.key === 'saved' && savedGigs.length > 0 && (
+            ) : null}
+            {item.key === 'saved' && savedGigs.length > 0 ? (
               <span style={{ background: sub === 'saved' ? 'rgba(255,255,255,0.3)' : 'var(--primary-light)', color: sub === 'saved' ? 'white' : 'var(--primary)', borderRadius: 100, padding: '0 6px', fontSize: 11, fontWeight: 800 }}>{savedGigs.length}</span>
-            )}
+            ) : null}
           </button>
         ))}
+        </div>
       </div>
 
-      {sub === 'browse' && (
+      {sub === 'browse' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>{BROWSE_GIGS.length} GIGs available for you</div>
-          {BROWSE_GIGS.map(g => <GigCard key={g.id} gig={g} showApply showSave />)}
+          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>{browseGigs.length} GIGs available for you</div>
+          {browseGigs.map(gig => (
+            <GigCard
+              key={gig.id}
+              gig={gig}
+              showApply
+              showSave
+              isApplied={appliedGigIds.includes(gig.id)}
+              isSaved={savedGigIds.includes(gig.id)}
+              onApply={handleApply}
+              onToggleSave={handleToggleSave}
+            />
+          ))}
         </div>
-      )}
+      ) : null}
 
-      {sub === 'applied' && (
+      {sub === 'applied' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {appliedGigs.length > 0
-            ? appliedGigs.map(g => <GigCard key={g.id} gig={g} status="applied" />)
+            ? appliedGigs.map(gig => (
+              <GigCard
+                key={gig.id}
+                gig={gig}
+                status="applied"
+                isApplied
+                isSaved={savedGigIds.includes(gig.id)}
+                onApply={handleApply}
+                onToggleSave={handleToggleSave}
+              />
+            ))
             : <EmptyState icon="📤" msg="You haven't applied to any GIGs yet. Browse and apply!" />}
         </div>
-      )}
+      ) : null}
 
-      {sub === 'active' && (
+      {sub === 'active' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {activeGigs.length > 0
-            ? activeGigs.map(g => <GigCard key={g.id} gig={g} status="active" />)
+            ? activeGigs.map(gig => (
+              <GigCard
+                key={gig.id}
+                gig={gig}
+                status="active"
+                isApplied={appliedGigIds.includes(gig.id)}
+                isSaved={savedGigIds.includes(gig.id)}
+                onApply={handleApply}
+                onToggleSave={handleToggleSave}
+              />
+            ))
             : <EmptyState icon="⚡" msg="No active GIGs right now. Apply to get started!" />}
         </div>
-      )}
+      ) : null}
 
-      {sub === 'completed' && (
+      {sub === 'completed' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {completedGigs.map(g => <GigCard key={g.id} gig={g} />)}
+          {completedGigs.map(gig => (
+            <GigCard
+              key={gig.id}
+              gig={gig}
+              isApplied={appliedGigIds.includes(gig.id)}
+              isSaved={savedGigIds.includes(gig.id)}
+              onApply={handleApply}
+              onToggleSave={handleToggleSave}
+            />
+          ))}
         </div>
-      )}
+      ) : null}
 
-      {sub === 'saved' && (
+      {sub === 'saved' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {savedGigs.length > 0
-            ? savedGigs.map(g => <GigCard key={g.id} gig={g} showApply showSave />)
+            ? savedGigs.map(gig => (
+              <GigCard
+                key={gig.id}
+                gig={gig}
+                showApply
+                showSave
+                isApplied={appliedGigIds.includes(gig.id)}
+                isSaved
+                onApply={handleApply}
+                onToggleSave={handleToggleSave}
+              />
+            ))
             : <EmptyState icon="🔖" msg="No saved GIGs yet. Save GIGs from Browse to find them here!" />}
         </div>
-      )}
+      ) : null}
 
-      {sub === 'opportunity' && (
-        <Opportunity />
-      )}
+      {sub === 'opportunity' ? (
+        <Opportunity
+          opportunities={opportunities}
+          onAcceptOpportunity={handleAcceptOpportunity}
+          onDeclineOpportunity={handleDeclineOpportunity}
+        />
+      ) : null}
     </div>
   )
 }

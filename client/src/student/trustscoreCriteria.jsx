@@ -59,7 +59,7 @@ export default function TrustScoreCriteria() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
+        <div className="responsive-card-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
           <div style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '22px 24px' }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--dark)', marginBottom: 14 }}>Ways to Gain Trust</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -93,7 +93,7 @@ export default function TrustScoreCriteria() {
 
         <div style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '22px 24px' }}>
           <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--dark)', marginBottom: 12 }}>How to Improve Faster</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div className="responsive-card-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {[
               'Solve at least one daily challenge every day — even the 5-min MCQ counts.',
               'Never skip a retention task for a verified skill; a broken streak costs -30 Trust instantly.',

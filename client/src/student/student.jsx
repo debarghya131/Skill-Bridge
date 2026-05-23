@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import GigCenter from './gig/gig'
 import Network from './network/network'
@@ -6,6 +6,8 @@ import SkillHub from './skillhub/skillhub'
 import Earning from './earning/earning'
 import StudentNav from './studentNav'
 import StudentSidebar from './studentSidebar'
+import { clearStudentSessionToken, fetchCurrentStudent, fetchStudentTrustScore, getStudentSessionToken, logoutStudent, saveStudentProfile } from './studentApi'
+import { mergeStudentProfile } from './studentProfileDefaults'
 
 const NAV_ITEMS = [
   { key: 'gig',        icon: '💼', label: 'GIG Center' },
@@ -25,6 +27,15 @@ const DEMO_PROJECT_LINKS = [
 
 const getProjectLink = (project, index) => project.link?.trim() || DEMO_PROJECT_LINKS[index % DEMO_PROJECT_LINKS.length]
 const getProjectDemoLink = (project, index) => project.demoLink?.trim() || DEMO_PROJECT_LINKS[index % DEMO_PROJECT_LINKS.length]
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(new Error('Unable to read file'))
+    reader.readAsDataURL(file)
+  })
+}
 
 function VerifiedBadge({ method }) {
   const [show, setShow] = useState(false)
@@ -100,19 +111,19 @@ function ProfileViewModal({ onClose, name, trustScore, avatar, skills, githubLin
   const savedProjects = projects.filter(p => p.saved)
 
   return (
-    <div style={{
+    <div className="responsive-modal-shell" style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '24px',
     }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{
+      <div className="responsive-modal-card" style={{
         background: 'var(--white)', borderRadius: 20, width: '100%', maxWidth: 560,
         maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)',
         border: '1px solid var(--border)',
       }}>
         {/* Header */}
-        <div style={{
+        <div className="responsive-modal-header" style={{
           background: 'linear-gradient(135deg, var(--dark) 0%, #1E1B4B 100%)',
           borderRadius: '20px 20px 0 0', padding: '24px 28px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -154,7 +165,7 @@ function ProfileViewModal({ onClose, name, trustScore, avatar, skills, githubLin
           }}>✕</button>
         </div>
 
-        <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="responsive-modal-body" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* Skills */}
           <div>
@@ -235,7 +246,7 @@ function ProfileViewModal({ onClose, name, trustScore, avatar, skills, githubLin
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Projects</div>
             {savedProjects.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+              <div className="responsive-projects-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
                 {savedProjects.map((p, i) => (
                   <div key={i} style={{ background: 'var(--bg)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border)' }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--dark)', marginBottom: 6 }}>{p.name || 'Untitled'}</div>
@@ -256,7 +267,7 @@ function ProfileViewModal({ onClose, name, trustScore, avatar, skills, githubLin
   )
 }
 
-function ProfileSection({ name, trustScore, avatar, setAvatar, skills, setSkills, githubLink, setGithubLink, contactInfo, setContactInfo, projects, setProjects, videoUrl, setVideoUrl, onViewProfile }) {
+function ProfileSection({ name, trustScore, avatar, setAvatar, skills, githubLink, setGithubLink, contactInfo, setContactInfo, projects, setProjects, videoUrl, setVideoUrl, onViewProfile }) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [githubInput, setGithubInput] = useState({})
   const [contactInput, setContactInput] = useState({ label: 'Phone', value: '' })
@@ -284,7 +295,7 @@ function ProfileSection({ name, trustScore, avatar, setAvatar, skills, setSkills
   return (
     <div>
       {/* 1. Profile Header */}
-      <div style={{ ...card, background: 'linear-gradient(135deg, var(--dark) 0%, #1E1B4B 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+      <div className="responsive-hero" style={{ ...card, background: 'linear-gradient(135deg, var(--dark) 0%, #1E1B4B 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <label style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
             title="Change profile picture">
@@ -308,9 +319,12 @@ function ProfileSection({ name, trustScore, avatar, setAvatar, skills, setSkills
               fontSize: 11,
             }}>📷</div>
             <input type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={e => {
+              onChange={async e => {
                 const file = e.target.files[0]
-                if (file) setAvatar(URL.createObjectURL(file))
+                if (!file) return
+
+                const imageUrl = await readFileAsDataUrl(file)
+                setAvatar(imageUrl)
               }} />
           </label>
           <div>
@@ -371,14 +385,25 @@ function ProfileSection({ name, trustScore, avatar, setAvatar, skills, setSkills
           <div style={sectionTitle}>Intro Video</div>
           <label style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             Replace
-            <input type="file" accept="video/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files[0]; if (f) setVideoUrl(URL.createObjectURL(f)) }} />
+            <input
+              type="file"
+              accept="video/*"
+              style={{ display: 'none' }}
+              onChange={async e => {
+                const file = e.target.files[0]
+                if (!file) return
+
+                const videoDataUrl = await readFileAsDataUrl(file)
+                setVideoUrl(videoDataUrl)
+              }}
+            />
           </label>
         </div>
         <div style={{ background: '#000', borderRadius: 12, overflow: 'hidden', aspectRatio: '16/7', maxWidth: 460 }}>
           <video ref={videoRef} src={videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             onEnded={() => setIsPlaying(false)} />
         </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+        <div className="responsive-stack" style={{ display: 'flex', gap: 10, marginTop: 12 }}>
           <button onClick={togglePlay} style={{
             display: 'flex', alignItems: 'center', gap: 7,
             padding: '8px 20px', borderRadius: 8,
@@ -406,7 +431,7 @@ function ProfileSection({ name, trustScore, avatar, setAvatar, skills, setSkills
                 style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
             </div>
           ))}
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="responsive-stack" style={{ display: 'flex', gap: 8 }}>
             <select value={githubInput.icon || '🐙'} onChange={e => setGithubInput(p => ({ ...p, icon: e.target.value }))}
               style={{ padding: '8px 10px', border: '1.5px solid var(--border)', borderRadius: 8, fontSize: 14, outline: 'none', background: 'var(--white)', cursor: 'pointer' }}>
               {[['🐙','GitHub'],['💼','LinkedIn'],['🌐','Portfolio'],['🐦','Twitter/X'],['📺','YouTube'],['🎨','Dribbble']].map(([ic, lb]) => (
@@ -444,7 +469,7 @@ function ProfileSection({ name, trustScore, avatar, setAvatar, skills, setSkills
               </button>
             </div>
           ))}
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="responsive-stack" style={{ display: 'flex', gap: 8 }}>
             <select
               value={contactInput.label}
               onChange={e => setContactInput(prev => ({ ...prev, label: e.target.value }))}
@@ -490,7 +515,7 @@ function ProfileSection({ name, trustScore, avatar, setAvatar, skills, setSkills
         <button onClick={() => setProjects(p => [...p, { name: '', desc: '', link: '', demoLink: '', saved: false }])}
           className="btn-primary" style={{ padding: '6px 16px', fontSize: 13 }}>+ Add Project</button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+      <div className="responsive-projects-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
         {projects.map((proj, i) => (
           <div key={i} style={{ background: 'var(--white)', borderRadius: 14, padding: '18px 20px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10, minHeight: 200 }}>
             {proj.saved ? (
@@ -543,7 +568,7 @@ function TrustScoreSection({ trustScore, skills, projects, githubLink }) {
   const verifiedSkills = skills.filter(skill => VERIFIED_SKILL_SET.has(skill)).length
   const profileLinks = githubLink.length
 
-  const factors = [
+  const fallbackFactors = useMemo(() => [
     { label: 'Daily Challenge Solved', icon: '⚡', desc: 'Solved today\'s daily challenge', points: 80, earned: true, category: 'Daily' },
     { label: 'Retention Task Completed', icon: '🔒', desc: `Completed daily retention tasks · 5 day streak`, points: 20, earned: true, category: 'Daily' },
     { label: 'Skill Verified', icon: '✅', desc: `${verifiedSkills} verified skill${verifiedSkills !== 1 ? 's' : ''} on profile`, points: 60, earned: verifiedSkills > 0, category: 'Skills' },
@@ -556,14 +581,54 @@ function TrustScoreSection({ trustScore, skills, projects, githubLink }) {
     { label: 'Intro Video Uploaded', icon: '🎥', desc: 'Short intro video uploaded to profile', points: 50, earned: true, category: 'Profile' },
     { label: 'Skill Expired (Penalty)', icon: '⚠️', desc: 'UI/UX Design verification expired', points: -80, earned: false, category: 'Penalty' },
     { label: 'Retention Task Missed (Penalty)', icon: '❌', desc: 'Missed 2 days of retention tasks', points: -30, earned: false, category: 'Penalty' },
-  ]
+  ], [profileLinks, savedProjects.length, verifiedSkills])
+  const [trustScoreData, setTrustScoreData] = useState(null)
 
-  const earnedPoints = factors.filter(f => f.earned && f.points > 0).reduce((a, f) => a + f.points, 0)
-  const penalties = factors.filter(f => !f.earned && f.points < 0).reduce((a, f) => a + f.points, 0)
-  const maxPoints = factors.filter(f => f.points > 0).reduce((a, f) => a + f.points, 0)
+  useEffect(() => {
+    let cancelled = false
+    const sessionToken = getStudentSessionToken()
 
-  const scoreColor = trustScore >= 850 ? '#10B981' : trustScore >= 700 ? '#3B82F6' : '#F59E0B'
-  const grade = trustScore >= 850 ? 'Excellent' : trustScore >= 700 ? 'Good' : 'Fair'
+    setTrustScoreData({
+      trustScore,
+      factors: fallbackFactors,
+      summary: {
+        earnedPoints: fallbackFactors.filter(item => item.earned && item.points > 0).reduce((sum, item) => sum + item.points, 0),
+        penalties: fallbackFactors.filter(item => !item.earned && item.points < 0).reduce((sum, item) => sum + item.points, 0),
+        maxPoints: fallbackFactors.filter(item => item.points > 0).reduce((sum, item) => sum + item.points, 0),
+      },
+    })
+
+    async function loadTrustScore() {
+      if (!sessionToken) {
+        return
+      }
+
+      try {
+        const result = await fetchStudentTrustScore(sessionToken)
+
+        if (!cancelled) {
+          setTrustScoreData(result.trustScore)
+        }
+      } catch (error) {
+        // Keep the local fallback data if the backend read fails.
+      }
+    }
+
+    loadTrustScore()
+
+    return () => {
+      cancelled = true
+    }
+  }, [fallbackFactors, trustScore])
+
+  const factors = trustScoreData?.factors || fallbackFactors
+  const earnedPoints = trustScoreData?.summary?.earnedPoints ?? factors.filter(f => f.earned && f.points > 0).reduce((a, f) => a + f.points, 0)
+  const penalties = trustScoreData?.summary?.penalties ?? factors.filter(f => !f.earned && f.points < 0).reduce((a, f) => a + f.points, 0)
+  const maxPoints = trustScoreData?.summary?.maxPoints ?? factors.filter(f => f.points > 0).reduce((a, f) => a + f.points, 0)
+
+  const displayedTrustScore = trustScoreData?.trustScore ?? trustScore
+  const scoreColor = displayedTrustScore >= 850 ? '#10B981' : displayedTrustScore >= 700 ? '#3B82F6' : '#F59E0B'
+  const grade = displayedTrustScore >= 850 ? 'Excellent' : displayedTrustScore >= 700 ? 'Good' : 'Fair'
   const openCriteriaWindow = () => {
     window.open('/student/trustscore-criteria', '_blank', 'noopener,noreferrer')
   }
@@ -571,7 +636,7 @@ function TrustScoreSection({ trustScore, skills, projects, githubLink }) {
   return (
     <div>
       {/* Hero card */}
-      <div style={{
+      <div className="responsive-hero" style={{
         background: 'linear-gradient(135deg, var(--dark) 0%, #1E1B4B 100%)',
         borderRadius: 16, padding: '28px 32px', marginBottom: 20,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20,
@@ -579,7 +644,7 @@ function TrustScoreSection({ trustScore, skills, projects, githubLink }) {
         <div>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Your TrustScore™</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 8 }}>
-            <span style={{ fontSize: 64, fontWeight: 900, background: `linear-gradient(135deg, #A5B4FC, #60A5FA)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1 }}>{trustScore}</span>
+            <span style={{ fontSize: 64, fontWeight: 900, background: `linear-gradient(135deg, #A5B4FC, #60A5FA)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1 }}>{displayedTrustScore}</span>
             <span style={{ fontSize: 22, color: 'rgba(255,255,255,0.4)', fontWeight: 700, paddingBottom: 8 }}>/1000</span>
           </div>
           <span style={{ background: scoreColor, color: 'white', fontSize: 13, fontWeight: 700, padding: '4px 14px', borderRadius: 100 }}>{grade}</span>
@@ -606,7 +671,7 @@ function TrustScoreSection({ trustScore, skills, projects, githubLink }) {
       </div>
 
       {/* Summary stat row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
+      <div className="responsive-card-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
         {[
           { label: 'Points Earned', value: `+${earnedPoints}`, color: '#065F46', bg: '#D1FAE5' },
           { label: 'Penalties', value: `${penalties}`, color: '#991B1B', bg: '#FEE2E2' },
@@ -621,7 +686,7 @@ function TrustScoreSection({ trustScore, skills, projects, githubLink }) {
 
       {/* What affects your score — scrollable */}
       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--dark)', marginBottom: 14 }}>What affects your TrustScore™</div>
-      <div style={{
+      <div className="responsive-scroll-panel" style={{
         display: 'flex', flexDirection: 'column', gap: 10,
         maxHeight: 'calc(100vh - 420px)', overflowY: 'auto', scrollbarWidth: 'thin',
         paddingRight: 4,
@@ -688,24 +753,104 @@ function ComingSoon({ icon, label }) {
 export default function StudentDashboard() {
   const navigate = useNavigate()
   const { state } = useLocation()
-  const name = state?.name || 'Student'
-  const trustScore = state?.trustScore || 750
+  const initialStudent = mergeStudentProfile(state?.student || state || {})
+  const sessionTokenRef = useRef(getStudentSessionToken())
+  const didHydrateRef = useRef(false)
 
   const [active, setActive] = useState('gig')
-  const [avatar, setAvatar] = useState(null)
-  const [skills, setSkills] = useState(['React', 'Node.js', 'UI/UX Design'])
-  const [githubLink, setGithubLink] = useState([])
-  const [contactInfo, setContactInfo] = useState([])
-  const [projects, setProjects] = useState([
-    { name: 'E-Commerce Dashboard', desc: 'Built a React admin dashboard with sales analytics, inventory tracking and order management for a local retailer.', link: 'https://github.com/topics/react-dashboard', demoLink: 'https://github.com/topics/react-dashboard', saved: true },
-    { name: 'College Notice Board App', desc: 'Flutter-based mobile app for college announcements with real-time push notifications and department filters.', link: 'https://github.com/topics/flutter-app', demoLink: 'https://github.com/topics/flutter-app', saved: true },
-    { name: 'Inventory Management System', desc: 'Excel-powered inventory tracker with automated reorder alerts and monthly report generation for Sharma Traders.', link: 'https://github.com/topics/inventory-management-system', demoLink: 'https://github.com/topics/inventory-management-system', saved: true },
-  ])
-  const [videoUrl, setVideoUrl] = useState('/src/assets/studentintro.mp4')
+  const [name, setName] = useState(initialStudent.name)
+  const [trustScore, setTrustScore] = useState(initialStudent.trustScore)
+  const [avatar, setAvatar] = useState(initialStudent.avatar)
+  const [skills, setSkills] = useState(initialStudent.skills)
+  const [githubLink, setGithubLink] = useState(initialStudent.githubLink)
+  const [contactInfo, setContactInfo] = useState(initialStudent.contactInfo)
+  const [projects, setProjects] = useState(initialStudent.projects)
+  const [videoUrl, setVideoUrl] = useState(initialStudent.videoUrl)
   const [showProfile, setShowProfile] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadStudent() {
+      if (!sessionTokenRef.current) {
+        didHydrateRef.current = true
+        return
+      }
+
+      try {
+        const result = await fetchCurrentStudent(sessionTokenRef.current)
+
+        if (cancelled) return
+
+        const student = mergeStudentProfile(result.student)
+        setName(student.name)
+        setTrustScore(student.trustScore)
+        setAvatar(student.avatar)
+        setSkills(student.skills)
+        setGithubLink(student.githubLink)
+        setContactInfo(student.contactInfo)
+        setProjects(student.projects)
+        setVideoUrl(student.videoUrl)
+      } catch (error) {
+        if (!cancelled) {
+          clearStudentSessionToken()
+          sessionTokenRef.current = ''
+        }
+      } finally {
+        if (!cancelled) {
+          didHydrateRef.current = true
+        }
+      }
+    }
+
+    loadStudent()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!sessionTokenRef.current || !didHydrateRef.current) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      saveStudentProfile(sessionTokenRef.current, {
+        name,
+        trustScore,
+        avatar,
+        skills,
+        githubLink,
+        contactInfo,
+        projects,
+        videoUrl,
+      }).catch(() => {})
+    }, 350)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [avatar, contactInfo, githubLink, name, projects, skills, trustScore, videoUrl])
+
+  const handleLogout = async () => {
+    const token = sessionTokenRef.current
+
+    clearStudentSessionToken()
+    sessionTokenRef.current = ''
+
+    if (token) {
+      try {
+        await logoutStudent(token)
+      } catch (error) {
+        // Ignore logout failures so the user can still exit cleanly.
+      }
+    }
+
+    navigate('/')
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)' }}>
+    <div className="dashboard-shell student-dashboard" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)' }}>
 
       {showProfile && (
         <ProfileViewModal
@@ -720,26 +865,30 @@ export default function StudentDashboard() {
         name={name}
         trustScore={trustScore}
         onOpenProfile={() => setShowProfile(true)}
+        onToggleSidebar={() => setSidebarOpen(true)}
       />
 
       {/* Body */}
-      <div style={{ display: 'flex', flex: 1 }}>
+      <div className="dashboard-body" style={{ display: 'flex', flex: 1 }}>
+        <div className={`dashboard-overlay${sidebarOpen ? ' is-open' : ''}`} onClick={() => setSidebarOpen(false)} />
 
         <StudentSidebar
           navItems={NAV_ITEMS}
           active={active}
           onSelect={setActive}
-          onLogout={() => navigate('/')}
+          onLogout={handleLogout}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
         />
 
         {/* Main content */}
-        <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
+        <main className="dashboard-main" style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
 
           {active === 'profile' && (
             <ProfileSection
               name={name} trustScore={trustScore}
               avatar={avatar} setAvatar={setAvatar}
-              skills={skills} setSkills={setSkills}
+              skills={skills}
               githubLink={githubLink} setGithubLink={setGithubLink}
               contactInfo={contactInfo} setContactInfo={setContactInfo}
               projects={projects} setProjects={setProjects}

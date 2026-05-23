@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useNetworkState } from './NetworkContext'
 
 const VERIFIED_SKILL_SET = new Set(['React', 'Node.js', 'UI/UX Design'])
 const DEMO_VIDEO_URL = '/src/assets/otherintroduction.mp4'
@@ -272,6 +273,7 @@ function ProfileModal({ person, onClose, onConnect, connectSent }) {
 
   return (
     <div
+      className="responsive-modal-shell"
       style={{
         position: 'fixed',
         inset: 0,
@@ -286,6 +288,7 @@ function ProfileModal({ person, onClose, onConnect, connectSent }) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
+        className="responsive-modal-card"
         style={{
           background: 'var(--white)',
           borderRadius: 20,
@@ -297,7 +300,7 @@ function ProfileModal({ person, onClose, onConnect, connectSent }) {
           border: '1px solid var(--border)',
         }}
       >
-        <div style={{
+        <div className="responsive-modal-header" style={{
           background: 'linear-gradient(135deg, var(--dark) 0%, #1E1B4B 100%)',
           borderRadius: '20px 20px 0 0',
           padding: '24px 28px',
@@ -359,7 +362,7 @@ function ProfileModal({ person, onClose, onConnect, connectSent }) {
           </button>
         </div>
 
-        <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="responsive-modal-body" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Skills</div>
@@ -452,7 +455,7 @@ function ProfileModal({ person, onClose, onConnect, connectSent }) {
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Projects</div>
             {savedProjects.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+              <div className="responsive-projects-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
                 {savedProjects.map((project, index) => (
                   <div key={`${project.name}-${index}`} style={{ background: 'var(--bg)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border)' }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--dark)', marginBottom: 6 }}>{project.name || 'Untitled'}</div>
@@ -484,68 +487,86 @@ function ProfileModal({ person, onClose, onConnect, connectSent }) {
 }
 
 export default function MyNetwork() {
+  const { networkState, setNetworkState } = useNetworkState()
   const [selectedProfile, setSelectedProfile] = useState(null)
-  const [people, setPeople] = useState(myNetworkPeople)
-  const [activity, setActivity] = useState(requestActivityInit)
-  const [teamUpRequests, setTeamUpRequests] = useState([])
+  const people = networkState?.myNetwork?.people || myNetworkPeople
+  const activity = networkState?.myNetwork?.activity || requestActivityInit
+  const teamUpRequests = networkState?.myNetwork?.teamUpRequests || []
 
   const sendConnectionRequest = person => {
     if (person.status === 'Connected' || person.status === 'Pending') return
 
-    setPeople(current => current.map(item => (
-      item.id === person.id ? { ...item, status: 'Pending' } : item
-    )))
-
-    setActivity(current => [
-      {
-        id: Date.now(),
-        type: 'sent',
-        name: person.name,
-        role: person.role,
-        trustScore: person.trustScore,
-        note: 'You sent a connection request.',
-        when: 'Just now',
-      },
+    setNetworkState(current => ({
       ...current,
-    ])
+      myNetwork: {
+        ...current.myNetwork,
+        people: current.myNetwork.people.map(item => (
+          item.id === person.id ? { ...item, status: 'Pending' } : item
+        )),
+        activity: [
+          {
+            id: Date.now(),
+            type: 'sent',
+            name: person.name,
+            role: person.role,
+            trustScore: person.trustScore,
+            note: 'You sent a connection request.',
+            when: 'Just now',
+          },
+          ...current.myNetwork.activity,
+        ],
+      },
+    }))
   }
 
   const sendTeamUpRequest = person => {
     if (teamUpRequests.includes(person.id)) return
 
-    setTeamUpRequests(current => [...current, person.id])
-    setActivity(current => [
-      {
-        id: Date.now(),
-        type: 'sent',
-        name: person.name,
-        role: person.role,
-        trustScore: person.trustScore,
-        note: 'You sent a team-up request.',
-        when: 'Just now',
-      },
+    setNetworkState(current => ({
       ...current,
-    ])
+      myNetwork: {
+        ...current.myNetwork,
+        teamUpRequests: [...current.myNetwork.teamUpRequests, person.id],
+        activity: [
+          {
+            id: Date.now(),
+            type: 'sent',
+            name: person.name,
+            role: person.role,
+            trustScore: person.trustScore,
+            note: 'You sent a team-up request.',
+            when: 'Just now',
+          },
+          ...current.myNetwork.activity,
+        ],
+      },
+    }))
   }
 
   const removeConnection = personId => {
     const removedPerson = people.find(person => person.id === personId)
-    setPeople(current => current.filter(person => person.id !== personId))
     if (selectedProfile?.id === personId) setSelectedProfile(null)
 
     if (removedPerson) {
-      setActivity(current => [
-        {
-          id: Date.now(),
-          type: 'rejected',
-          name: removedPerson.name,
-          role: removedPerson.role,
-          trustScore: removedPerson.trustScore,
-          note: 'Removed from your network list.',
-          when: 'Just now',
-        },
+      setNetworkState(current => ({
         ...current,
-      ])
+        myNetwork: {
+          ...current.myNetwork,
+          people: current.myNetwork.people.filter(person => person.id !== personId),
+          activity: [
+            {
+              id: Date.now(),
+              type: 'rejected',
+              name: removedPerson.name,
+              role: removedPerson.role,
+              trustScore: removedPerson.trustScore,
+              note: 'Removed from your network list.',
+              when: 'Just now',
+            },
+            ...current.myNetwork.activity,
+          ],
+        },
+      }))
     }
   }
 
@@ -553,40 +574,44 @@ export default function MyNetwork() {
     const request = activity.find(item => item.id === requestId && item.type === 'incoming')
     if (!request) return
 
-    setActivity(current => current.map(item => (
-      item.id === requestId
-        ? { ...item, type: 'accepted', note: 'You accepted this connection request.', when: 'Just now' }
-        : item
-    )))
+    setNetworkState(current => {
+      const alreadyExists = current.myNetwork.people.some(person => person.name === request.name)
 
-    setPeople(current => {
-      const alreadyExists = current.some(person => person.name === request.name)
-      if (alreadyExists) {
-        return current.map(person => (
-          person.name === request.name ? { ...person, status: 'Connected' } : person
-        ))
-      }
-
-      return [
-        {
-          id: Date.now() + 1,
-          name: request.name,
-          role: request.role,
-          trustScore: request.trustScore,
-          status: 'Connected',
-          availability: 'Open to collaborate',
-          skills: ['React', 'Node.js'],
-          contactInfo: [
-            { label: 'Email', value: `${request.name.toLowerCase().replace(/\s+/g, '.')}@skillbridge.demo` },
-            { label: 'WhatsApp', value: '+91 90000 10001' },
-          ],
-          githubLink: [],
-          projects: [
-            { name: 'Connection Portfolio', desc: 'Demo project preview for accepted network members.', link: 'https://github.com/topics/project', demoLink: 'https://github.com/topics/project', saved: true },
-          ],
-        },
+      return {
         ...current,
-      ]
+        myNetwork: {
+          ...current.myNetwork,
+          activity: current.myNetwork.activity.map(item => (
+            item.id === requestId
+              ? { ...item, type: 'accepted', note: 'You accepted this connection request.', when: 'Just now' }
+              : item
+          )),
+          people: alreadyExists
+            ? current.myNetwork.people.map(person => (
+              person.name === request.name ? { ...person, status: 'Connected' } : person
+            ))
+            : [
+              {
+                id: Date.now() + 1,
+                name: request.name,
+                role: request.role,
+                trustScore: request.trustScore,
+                status: 'Connected',
+                availability: 'Open to collaborate',
+                skills: ['React', 'Node.js'],
+                contactInfo: [
+                  { label: 'Email', value: `${request.name.toLowerCase().replace(/\s+/g, '.')}@skillbridge.demo` },
+                  { label: 'WhatsApp', value: '+91 90000 10001' },
+                ],
+                githubLink: [],
+                projects: [
+                  { name: 'Connection Portfolio', desc: 'Demo project preview for accepted network members.', link: 'https://github.com/topics/project', demoLink: 'https://github.com/topics/project', saved: true },
+                ],
+              },
+              ...current.myNetwork.people,
+            ],
+        },
+      }
     })
   }
 
@@ -624,8 +649,8 @@ export default function MyNetwork() {
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.66)' }}>View profiles, send connection requests, and track how people respond to you.</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.9fr', gap: 14 }}>
-        <div style={panelStyle}>
+      <div className="responsive-split-two" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.9fr', gap: 14 }}>
+        <div className="responsive-scroll-panel" style={panelStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12 }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)', marginBottom: 4 }}>
@@ -708,7 +733,7 @@ export default function MyNetwork() {
           </div>
         </div>
 
-        <div style={panelStyle}>
+        <div className="responsive-scroll-panel" style={panelStyle}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)', marginBottom: 4 }}>
               Request Activity

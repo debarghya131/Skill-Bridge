@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useNetworkState } from './NetworkContext'
 
 const DEMO_VIDEO_URL = '/src/assets/otherintroduction.mp4'
 
@@ -115,12 +116,13 @@ function ProfileModal({ person, onClose }) {
 
   return (
     <div
+      className="responsive-modal-shell"
       style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{ background: 'var(--white)', borderRadius: 20, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)' }}>
+      <div className="responsive-modal-card" style={{ background: 'var(--white)', borderRadius: 20, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)' }}>
         {/* Header */}
-        <div style={{ background: 'linear-gradient(135deg, var(--dark), #1E1B4B)', borderRadius: '20px 20px 0 0', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="responsive-modal-header" style={{ background: 'linear-gradient(135deg, var(--dark), #1E1B4B)', borderRadius: '20px 20px 0 0', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ width: 56, height: 56, borderRadius: '50%', background: getAvatarBg(person.name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 900, fontSize: 22, border: '3px solid rgba(255,255,255,0.2)', flexShrink: 0 }}>
               {person.avatar}
@@ -148,7 +150,7 @@ function ProfileModal({ person, onClose }) {
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.1)', color: 'white', width: 32, height: 32, borderRadius: '50%', border: 'none', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>✕</button>
         </div>
 
-        <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="responsive-modal-body" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Availability */}
           <div style={{ fontSize: 13, color: 'var(--muted)', background: 'var(--bg)', borderRadius: 8, padding: '8px 12px' }}>
             🟢 {person.availability}
@@ -239,51 +241,80 @@ const col = {
 }
 
 export default function NetworkTeamUp() {
-  const [myRequests, setMyRequests] = useState(MY_REQUESTS_INIT)
-  const [incoming, setIncoming] = useState(INCOMING_INIT)
-  const [accepted, setAccepted] = useState(ACCEPTED_INIT)
+  const { networkState, setNetworkState } = useNetworkState()
   const [selectedProfile, setSelectedProfile] = useState(null)
-  const [sentRequests, setSentRequests] = useState([
-    { id: 3, status: 'accepted', name: 'Rohan Das', title: 'UI/UX partner for social impact app case study', type: 'Case Study' },
-    { id: 4, status: 'declined', name: 'Sneha Iyer', title: 'Content writer for open-source project docs', type: 'Open Source' },
-  ])
   const [showAdd, setShowAdd] = useState(false)
   const [newReq, setNewReq] = useState({ title: '', type: 'Web Project', slots: '2', skills: '' })
   const [typeFilter, setTypeFilter] = useState('all')
+  const myRequests = networkState?.teamUp?.myRequests || MY_REQUESTS_INIT
+  const incoming = networkState?.teamUp?.incoming || INCOMING_INIT
+  const accepted = networkState?.teamUp?.accepted || ACCEPTED_INIT
+  const sentRequests = networkState?.teamUp?.sentRequests || [
+    { id: 3, status: 'accepted', name: 'Rohan Das', title: 'UI/UX partner for social impact app case study', type: 'Case Study' },
+    { id: 4, status: 'declined', name: 'Sneha Iyer', title: 'Content writer for open-source project docs', type: 'Open Source' },
+  ]
 
   const allTypes = ['all', ...Array.from(new Set(ALL_REQUESTS.map(r => r.type)))]
 
   const filteredAll = ALL_REQUESTS.filter(r => typeFilter === 'all' || r.type === typeFilter)
 
   const sentIds = sentRequests.map(r => r.id)
-  const sendRequest = (req) => setSentRequests(prev => [...prev, { id: req.id, status: 'pending', name: req.name, title: req.title, type: req.type }])
-
-  const acceptIncoming = (req) => {
-    setAccepted(prev => [...prev, {
-      id: Date.now(),
-      name: req.name,
-      skills: req.skills,
-      trustScore: req.trustScore,
-      avatar: req.avatar,
-      projectTitle: myRequests.find(r => r.id === req.requestId)?.title || 'Your project',
-    }])
-    setIncoming(prev => prev.filter(r => r.id !== req.id))
+  const sendRequest = (req) => {
+    setNetworkState(current => ({
+      ...current,
+      teamUp: {
+        ...current.teamUp,
+        sentRequests: [...current.teamUp.sentRequests, { id: req.id, status: 'pending', name: req.name, title: req.title, type: req.type }],
+      },
+    }))
   }
 
-  const declineIncoming = (id) => setIncoming(prev => prev.filter(r => r.id !== id))
+  const acceptIncoming = (req) => {
+    setNetworkState(current => ({
+      ...current,
+      teamUp: {
+        ...current.teamUp,
+        accepted: [...current.teamUp.accepted, {
+          id: Date.now(),
+          name: req.name,
+          skills: req.skills,
+          trustScore: req.trustScore,
+          avatar: req.avatar,
+          projectTitle: current.teamUp.myRequests.find(r => r.id === req.requestId)?.title || 'Your project',
+        }],
+        incoming: current.teamUp.incoming.filter(item => item.id !== req.id),
+      },
+    }))
+  }
+
+  const declineIncoming = (id) => {
+    setNetworkState(current => ({
+      ...current,
+      teamUp: {
+        ...current.teamUp,
+        incoming: current.teamUp.incoming.filter(request => request.id !== id),
+      },
+    }))
+  }
 
   const addRequest = () => {
     const title = newReq.title.trim()
     if (!title) return
-    setMyRequests(prev => [...prev, {
-      id: Date.now(),
-      title,
-      type: newReq.type,
-      slots: Number(newReq.slots) || 2,
-      filled: 0,
-      skills: newReq.skills.split(',').map(s => s.trim()).filter(Boolean),
-      status: 'open',
-    }])
+    setNetworkState(current => ({
+      ...current,
+      teamUp: {
+        ...current.teamUp,
+        myRequests: [...current.teamUp.myRequests, {
+          id: Date.now(),
+          title,
+          type: newReq.type,
+          slots: Number(newReq.slots) || 2,
+          filled: 0,
+          skills: newReq.skills.split(',').map(s => s.trim()).filter(Boolean),
+          status: 'open',
+        }],
+      },
+    }))
     setNewReq({ title: '', type: 'Web Project', slots: '2', skills: '' })
     setShowAdd(false)
   }
@@ -321,10 +352,10 @@ export default function NetworkTeamUp() {
       </div>
 
       {/* Three-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+      <div className="responsive-card-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
 
         {/* Column 1 — All open team-up requests */}
-        <div style={col}>
+        <div className="responsive-scroll-panel" style={col}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>
               🚀 Open Requests
@@ -404,7 +435,7 @@ export default function NetworkTeamUp() {
         </div>
 
         {/* Column 2 — My team-up requests */}
-        <div style={col}>
+        <div className="responsive-scroll-panel" style={col}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>
               📋 My Requests
@@ -434,7 +465,7 @@ export default function NetworkTeamUp() {
                 placeholder="What are you building? (title)"
                 style={inputStyle}
               />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 8 }}>
+              <div className="responsive-inline-form" style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 8 }}>
                 <select
                   value={newReq.type}
                   onChange={e => setNewReq(p => ({ ...p, type: e.target.value }))}
@@ -539,7 +570,7 @@ export default function NetworkTeamUp() {
         </div>
 
         {/* Column 3 — Team-up log: accepted + incoming */}
-        <div style={col}>
+        <div className="responsive-scroll-panel" style={col}>
           <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)', marginBottom: 4 }}>
             📣 Team-Up Log
           </div>

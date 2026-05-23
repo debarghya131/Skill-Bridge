@@ -1,28 +1,65 @@
-import { useState } from 'react'
-
-const walletStats = [
-  { label: 'Wallet Balance', value: 'Rs 12,480', tone: '#10B981' },
-  { label: 'This Month', value: '+Rs 4,250', tone: '#4F46E5' },
-  { label: 'Pending Clearance', value: 'Rs 1,200', tone: '#EA580C' },
-]
-
-const paymentHistoryInit = [
-  { id: 1, title: 'React dashboard gig payout', company: 'Gupta Electronics', amount: '+Rs 3,500', date: 'Today, 10:30 AM', status: 'Credited' },
-  { id: 2, title: 'Inventory system milestone', company: 'Sharma Traders', amount: '+Rs 2,000', date: 'Apr 16, 2026', status: 'Credited' },
-  { id: 3, title: 'Content sprint bonus', company: 'Meera Boutique', amount: '+Rs 750', date: 'Apr 12, 2026', status: 'Processing' },
-  { id: 4, title: 'Data cleanup project', company: 'Nexus IT Hub', amount: '+Rs 1,800', date: 'Apr 08, 2026', status: 'Credited' },
-  { id: 5, title: 'Referral reward', company: 'SkillBridge', amount: '+Rs 500', date: 'Apr 05, 2026', status: 'Credited' },
-]
-
-const upiAccounts = [
-  { id: 'upi-1', label: 'Primary UPI', value: 'student@oksbi' },
-  { id: 'upi-2', label: 'Backup UPI', value: 'student@ybl' },
-]
+import { useEffect, useRef, useState } from 'react'
+import { clearStudentSessionToken, fetchStudentEarning, getStudentSessionToken, saveStudentEarning } from '../studentApi'
+import { buildDemoEarningState } from './earningDemoData'
 
 export default function Earning() {
-  const [paymentHistory, setPaymentHistory] = useState(paymentHistoryInit)
-  const [withdrawAmount, setWithdrawAmount] = useState('2500')
-  const [selectedUpi, setSelectedUpi] = useState(upiAccounts[0].value)
+  const sessionTokenRef = useRef(getStudentSessionToken())
+  const didHydrateRef = useRef(false)
+  const [earningState, setEarningState] = useState(() => buildDemoEarningState())
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadEarningState() {
+      if (!sessionTokenRef.current) {
+        didHydrateRef.current = true
+        return
+      }
+
+      try {
+        const result = await fetchStudentEarning(sessionTokenRef.current)
+
+        if (!cancelled && result.earningState) {
+          setEarningState(result.earningState)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          clearStudentSessionToken()
+          sessionTokenRef.current = ''
+          setEarningState(buildDemoEarningState())
+        }
+      } finally {
+        if (!cancelled) {
+          didHydrateRef.current = true
+        }
+      }
+    }
+
+    loadEarningState()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!sessionTokenRef.current || !didHydrateRef.current) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      saveStudentEarning(sessionTokenRef.current, { earningState }).catch(() => {})
+    }, 350)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [earningState])
+
+  const walletStats = earningState.walletStats
+  const paymentHistory = earningState.paymentHistory
+  const withdrawAmount = earningState.withdrawAmount
+  const selectedUpi = earningState.selectedUpi
+  const upiAccounts = earningState.upiAccounts
+  const availableNow = earningState.availableNow
 
   const panelStyle = {
     background: 'var(--white)',
@@ -38,18 +75,21 @@ export default function Earning() {
   const requestWithdraw = () => {
     if (!withdrawAmount) return
 
-    setPaymentHistory(current => [
-      {
-        id: Date.now(),
-        title: 'UPI withdrawal request',
-        company: selectedUpi,
-        amount: `-Rs ${withdrawAmount}`,
-        date: 'Just now',
-        status: 'Processing',
-      },
+    setEarningState(current => ({
       ...current,
-    ])
-    setWithdrawAmount('')
+      paymentHistory: [
+        {
+          id: Date.now(),
+          title: 'UPI withdrawal request',
+          company: selectedUpi,
+          amount: `-Rs ${withdrawAmount}`,
+          date: 'Just now',
+          status: 'Processing',
+        },
+        ...current.paymentHistory,
+      ],
+      withdrawAmount: '',
+    }))
   }
 
   return (
@@ -68,8 +108,8 @@ export default function Earning() {
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.68)' }}>Monitor incoming payments, review transaction history, and withdraw your balance directly to UPI.</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '0.95fr 1.2fr 0.9fr', gap: 14 }}>
-        <div style={panelStyle}>
+      <div className="responsive-earning-grid" style={{ display: 'grid', gridTemplateColumns: '0.95fr 1.2fr 0.9fr', gap: 14 }}>
+        <div className="responsive-scroll-panel" style={panelStyle}>
           <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)', marginBottom: 10 }}>
             Wallet Balance
           </div>
@@ -84,7 +124,7 @@ export default function Earning() {
             <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
               Available Now
             </div>
-            <div style={{ fontSize: 34, fontWeight: 900, color: 'var(--dark)', lineHeight: 1, marginBottom: 10 }}>Rs 12,480</div>
+            <div style={{ fontSize: 34, fontWeight: 900, color: 'var(--dark)', lineHeight: 1, marginBottom: 10 }}>{availableNow}</div>
             <div style={{ fontSize: 13, color: 'var(--muted)' }}>Ready to withdraw to your linked UPI account.</div>
           </div>
 
@@ -98,7 +138,7 @@ export default function Earning() {
           </div>
         </div>
 
-        <div style={panelStyle}>
+        <div className="responsive-scroll-panel" style={panelStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>
               Payment History
@@ -138,14 +178,14 @@ export default function Earning() {
           </div>
         </div>
 
-        <div style={panelStyle}>
+        <div className="responsive-scroll-panel" style={panelStyle}>
           <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)', marginBottom: 10 }}>
             Withdraw (UPI)
           </div>
 
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 16px', marginBottom: 14 }}>
             <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Available to withdraw</div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--dark)', lineHeight: 1 }}>Rs 12,480</div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--dark)', lineHeight: 1 }}>{availableNow}</div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -158,7 +198,7 @@ export default function Earning() {
                       type="radio"
                       name="upi"
                       checked={selectedUpi === account.value}
-                      onChange={() => setSelectedUpi(account.value)}
+                      onChange={() => setEarningState(current => ({ ...current, selectedUpi: account.value }))}
                     />
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dark)' }}>{account.label}</div>
@@ -173,7 +213,7 @@ export default function Earning() {
               <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Enter amount</div>
               <input
                 value={withdrawAmount}
-                onChange={e => setWithdrawAmount(e.target.value)}
+                onChange={e => setEarningState(current => ({ ...current, withdrawAmount: e.target.value }))}
                 placeholder="Enter amount"
                 style={{
                   width: '100%',

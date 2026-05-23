@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useNetworkState } from './NetworkContext'
 
 const VERIFIED_SKILL_SET = new Set(['React', 'Node.js', 'UI/UX Design'])
 const DEMO_VIDEO_URL = '/src/assets/otherintroduction.mp4'
@@ -232,6 +233,7 @@ function ProfileModal({ person, connectSent, teamUpSent, onClose, onConnect, onT
 
   return (
     <div
+      className="responsive-modal-shell"
       style={{
         position: 'fixed',
         inset: 0,
@@ -246,6 +248,7 @@ function ProfileModal({ person, connectSent, teamUpSent, onClose, onConnect, onT
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
+        className="responsive-modal-card"
         style={{
           background: 'var(--white)',
           borderRadius: 20,
@@ -257,7 +260,7 @@ function ProfileModal({ person, connectSent, teamUpSent, onClose, onConnect, onT
           border: '1px solid var(--border)',
         }}
       >
-        <div style={{
+        <div className="responsive-modal-header" style={{
           background: 'linear-gradient(135deg, var(--dark) 0%, #1E1B4B 100%)',
           borderRadius: '20px 20px 0 0',
           padding: '24px 28px',
@@ -321,7 +324,7 @@ function ProfileModal({ person, connectSent, teamUpSent, onClose, onConnect, onT
           </button>
         </div>
 
-        <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="responsive-modal-body" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Skills</div>
@@ -438,7 +441,7 @@ function ProfileModal({ person, connectSent, teamUpSent, onClose, onConnect, onT
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Projects</div>
             {savedProjects.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+              <div className="responsive-projects-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
                 {savedProjects.map((project, index) => (
                   <div key={`${project.name}-${index}`} style={{ background: 'var(--bg)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border)' }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--dark)', marginBottom: 6 }}>{project.name || 'Untitled'}</div>
@@ -455,7 +458,7 @@ function ProfileModal({ person, connectSent, teamUpSent, onClose, onConnect, onT
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div className="responsive-stack" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <RequestButton kind="connect" active={connectSent} sentLabel="Connection Requested" idleLabel="Send Connect Request" onClick={onConnect} />
             <RequestButton kind="teamup" active={teamUpSent} sentLabel="Team-Up Requested" idleLabel="Send Team-Up Request" onClick={onTeamUp} />
           </div>
@@ -466,16 +469,33 @@ function ProfileModal({ person, connectSent, teamUpSent, onClose, onConnect, onT
 }
 
 export default function NetworkHome() {
-  const [connectRequests, setConnectRequests] = useState([])
-  const [teamUpRequests, setTeamUpRequests] = useState([])
+  const { networkState, setNetworkState } = useNetworkState()
   const [selectedProfile, setSelectedProfile] = useState(null)
+  const connectRequests = networkState?.home?.connectRequests || []
+  const teamUpRequests = networkState?.home?.teamUpRequests || []
 
   const sendConnectRequest = id => {
-    setConnectRequests(current => (current.includes(id) ? current : [...current, id]))
+    setNetworkState(current => ({
+      ...current,
+      home: {
+        ...current.home,
+        connectRequests: current.home.connectRequests.includes(id)
+          ? current.home.connectRequests
+          : [...current.home.connectRequests, id],
+      },
+    }))
   }
 
   const sendTeamUpRequest = id => {
-    setTeamUpRequests(current => (current.includes(id) ? current : [...current, id]))
+    setNetworkState(current => ({
+      ...current,
+      home: {
+        ...current.home,
+        teamUpRequests: current.home.teamUpRequests.includes(id)
+          ? current.home.teamUpRequests
+          : [...current.home.teamUpRequests, id],
+      },
+    }))
   }
 
   return (
@@ -515,7 +535,7 @@ export default function NetworkHome() {
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+              <div className="responsive-form-grid-tight" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                 <button
                   className="btn-secondary"
                   onClick={() => setSelectedProfile(person)}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { setStudentSessionToken, signInStudent, signUpStudent } from './studentApi'
 
 const LANGUAGES = [
   'Hindi', 'English', 'Bengali', 'Telugu', 'Marathi',
@@ -57,6 +58,8 @@ export default function StudentAuth() {
   })
   const [errors, setErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
+  const [serverError, setServerError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }))
 
@@ -77,16 +80,59 @@ export default function StudentAuth() {
     return Object.keys(e).length === 0
   }
 
-  const handleSignup = () => {
-    if (validateSignup()) navigate('/student/dashboard', { state: { name: form.name, trustScore: Math.floor(Math.random() * 200) + 720 } })
+  const handleSignup = async () => {
+    if (!validateSignup()) return
+
+    try {
+      setIsSubmitting(true)
+      setServerError('')
+
+      const result = await signUpStudent({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        aadhaarNumber: form.aadhaarNumber,
+        digilockerToken: form.digilockerToken,
+        language: form.language,
+        location: form.location,
+        password: form.password,
+        contactMethod,
+        idMethod,
+      })
+
+      setStudentSessionToken(result.token)
+      navigate('/student/dashboard', { state: { student: result.student } })
+    } catch (error) {
+      setServerError(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleSignin = () => {
+  const handleSignin = async () => {
     const e = {}
     if (!form.signInContact.trim()) e.signInContact = 'Email or phone is required'
     if (!form.signInPassword) e.signInPassword = 'Password is required'
     setErrors(e)
-    if (Object.keys(e).length === 0) navigate('/student/dashboard', { state: { name: form.signInContact, trustScore: Math.floor(Math.random() * 200) + 720 } })
+
+    if (Object.keys(e).length > 0) return
+
+    try {
+      setIsSubmitting(true)
+      setServerError('')
+
+      const result = await signInStudent({
+        contact: form.signInContact,
+        password: form.signInPassword,
+      })
+
+      setStudentSessionToken(result.token)
+      navigate('/student/dashboard', { state: { student: result.student } })
+    } catch (error) {
+      setServerError(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -256,9 +302,15 @@ export default function StudentAuth() {
               </Field>
 
               <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 6, padding: '10px' }}
-                onClick={handleSignup}>
-                Create Account & Continue →
+                onClick={handleSignup} disabled={isSubmitting}>
+                {isSubmitting ? 'Creating Account...' : 'Create Account & Continue →'}
               </button>
+
+              {serverError && (
+                <p style={{ textAlign: 'center', fontSize: 12, color: '#DC2626', marginTop: 10 }}>
+                  {serverError}
+                </p>
+              )}
 
               <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
                 By registering you agree to our Terms of Service and Privacy Policy
@@ -296,9 +348,15 @@ export default function StudentAuth() {
               </div>
 
               <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '13px' }}
-                onClick={handleSignin}>
-                Sign In →
+                onClick={handleSignin} disabled={isSubmitting}>
+                {isSubmitting ? 'Signing In...' : 'Sign In →'}
               </button>
+
+              {serverError && (
+                <p style={{ textAlign: 'center', fontSize: 12, color: '#DC2626', marginTop: 12 }}>
+                  {serverError}
+                </p>
+              )}
 
               <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--muted)', marginTop: 20 }}>
                 Don't have an account?{' '}

@@ -3,26 +3,26 @@ import { useNavigate } from 'react-router-dom'
 const studentSteps = [
   {
     step: '01',
-    title: 'Create your skill profile',
-    desc: 'Sign up and list what you know — React, Python, Canva, content writing. No resume required. No college name asked.',
-    icon: '📝',
+    title: 'Create your student profile',
+    desc: 'Sign up, build your profile, add links, projects, intro video, and start with the same seeded dashboard experience used across the platform.',
+    icon: '👤',
   },
   {
     step: '02',
-    title: 'Prove it with SkillProof',
-    desc: 'Take a 10-minute AI-graded mini task to earn a verified badge. Your TrustScore updates instantly.',
-    icon: '⚡',
+    title: 'Verify skills and build TrustScore',
+    desc: 'Use Skill Hub, retention tasks, and daily challenges to keep skills verified, improve TrustScore, and stay visible for real opportunities.',
+    icon: '🏆',
   },
   {
     step: '03',
-    title: 'Get matched to real gigs',
-    desc: 'Our algorithm surfaces the best-fit opportunities from local MSMEs. Apply in one click.',
-    icon: '🎯',
+    title: 'Explore gigs and company invites',
+    desc: 'Browse GIGs, receive direct company opportunities, accept interview tasks, and move through applied, active, completed, and saved flows.',
+    icon: '💼',
   },
   {
     step: '04',
-    title: 'Deliver, earn, grow',
-    desc: 'Complete projects, collect reviews, and build a portfolio that proves your capability — not your college.',
+    title: 'Collaborate, earn, and grow',
+    desc: 'Use Network, complete work, track earnings, withdraw payouts, and grow a profile that proves merit through action.',
     icon: '🚀',
   },
 ]
@@ -30,33 +30,33 @@ const studentSteps = [
 const companySteps = [
   {
     step: '01',
-    title: 'Post your project',
-    desc: 'Describe the task, set the budget, and list the skills needed. Takes under 5 minutes.',
-    icon: '📋',
+    title: 'Set up your business profile',
+    desc: 'Create a company account, add business details, hiring categories, work modes, and contact info so students can trust the brand.',
+    icon: '🏢',
   },
   {
     step: '02',
-    title: 'Browse verified talent',
-    desc: 'See matched student profiles ranked by TrustScore and relevant skills — not college pedigree.',
-    icon: '👀',
+    title: 'Search talent and manage GIGs',
+    desc: 'Post or manage GIGs, review applicants, explore talent by TrustScore and skills, and shortlist students from one workspace.',
+    icon: '🔎',
   },
   {
     step: '03',
-    title: 'Hire and collaborate',
-    desc: 'Connect directly, share files, track progress — all within the platform.',
-    icon: '🤝',
+    title: 'Send interview tasks and track pipeline',
+    desc: 'Move candidates through applications, interview tasks, reviews, and ready-to-hire stages with a structured hiring pipeline.',
+    icon: '📨',
   },
   {
     step: '04',
-    title: 'Pay securely, rate the work',
-    desc: 'Release payment on completion. Your rating helps students build their merit profile.',
+    title: 'Run projects and payments',
+    desc: 'Track delivery in Project Workspace, manage company wallet and payouts, and keep the full student-workflow connected to execution.',
     icon: '✅',
   },
 ]
 
 function StepCard({ step, title, desc, icon, isLast }) {
   return (
-    <div style={{ display: 'flex', gap: '20px', position: 'relative' }}>
+    <div className="landing-step-card" style={{ display: 'flex', gap: '20px', position: 'relative' }}>
       {/* Connector line */}
       {!isLast && (
         <div style={{
@@ -91,22 +91,21 @@ export default function HowItWorks() {
   const navigate = useNavigate()
 
   return (
-    <section id="how-it-works" style={{ padding: '100px 0', background: 'var(--white)' }}>
+    <section id="how-it-works" className="landing-section" style={{ padding: '100px 0', background: 'var(--white)' }}>
       <div className="container">
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '72px' }}>
+        <div className="landing-section-header" style={{ textAlign: 'center', marginBottom: '72px' }}>
           <div className="section-label" style={{ marginBottom: 12 }}>How it works</div>
           <h2 className="section-title" style={{ marginBottom: 16 }}>
-            Simple steps.<br />Real results.
+            Two clear journeys.<br />One connected platform.
           </h2>
           <p className="section-subtitle" style={{ margin: '0 auto', textAlign: 'center' }}>
-            Whether you are a student looking for your first break or a business looking for affordable talent —
-            getting started takes minutes.
+            Students move from profile to TrustScore, gigs, network, and earnings. Companies move from business setup to talent search, GIG management, workspace, and payments.
           </p>
         </div>
 
         {/* Two column layout */}
-        <div style={{
+        <div className="landing-how-grid" style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '60px',

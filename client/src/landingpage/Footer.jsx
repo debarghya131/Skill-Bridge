@@ -8,7 +8,7 @@ export default function Footer() {
       padding: '60px 0 32px',
     }}>
       <div className="container">
-        <div style={{
+        <div className="landing-footer-grid" style={{
           display: 'grid',
           gridTemplateColumns: '2fr 1fr 1fr 1fr',
           gap: '48px',
@@ -17,13 +17,11 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <div style={{
-                width: 36, height: 36,
-                background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
-                borderRadius: '10px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'white', fontWeight: 800, fontSize: 16,
-              }}>S</div>
+              <img
+                src="/logo.png"
+                alt="SkillBridge logo"
+                style={{ width: 36, height: 36, borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }}
+              />
               <span style={{ fontSize: 20, fontWeight: 800, color: 'white', letterSpacing: '-0.03em' }}>
                 SkillBridge
               </span>
@@ -67,7 +65,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div style={{
+        <div className="landing-footer-bottom" style={{
           paddingTop: 28,
           borderTop: '1px solid rgba(255,255,255,0.1)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',

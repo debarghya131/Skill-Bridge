@@ -1,6 +1,6 @@
 export default function NetworkNav({ items, active, onChange }) {
   return (
-    <div style={{ display: 'flex', gap: 4, background: 'var(--white)', borderRadius: 12, padding: 6, border: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap' }}>
+    <div className="responsive-pill-nav" style={{ display: 'flex', gap: 4, background: 'var(--white)', borderRadius: 12, padding: 6, border: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap' }}>
       {items.map(item => (
         <button
           key={item.key}

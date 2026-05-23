@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { setCompanySessionToken, signInCompany, signUpCompany } from './companyApi'
 
 const inputStyle = {
   width: '100%', padding: '8px 12px',
@@ -52,6 +53,8 @@ export default function CompanyAuth() {
   })
   const [errors, setErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
+  const [serverError, setServerError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }))
   const focusAccent = (e) => { e.target.style.borderColor = 'var(--accent)' }
@@ -62,6 +65,7 @@ export default function CompanyAuth() {
     if (!form.companyName.trim()) e.companyName = 'Company name is required'
     if (contactMethod === 'email' && !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email address'
     if (contactMethod === 'phone' && !/^\d{10}$/.test(form.phone)) e.phone = 'Enter a valid 10-digit phone number'
+    if (bizVerifyMethod === 'gstin' && !form.gstin.trim()) e.gstin = 'GSTIN is required'
     if (bizVerifyMethod !== 'gstin' && !form.businessDoc.trim()) {
       e.businessDoc = 'Business registration number is required'
     }
@@ -71,16 +75,62 @@ export default function CompanyAuth() {
     return Object.keys(e).length === 0
   }
 
-  const handleSignup = () => {
-    if (validateSignup()) navigate('/company/dashboard', { state: { companyName: form.companyName, location: form.location } })
+  const handleSignup = async () => {
+    if (!validateSignup()) {
+      return
+    }
+
+    setIsSubmitting(true)
+    setServerError('')
+
+    try {
+      const result = await signUpCompany({
+        companyName: form.companyName,
+        email: form.email,
+        phone: form.phone,
+        gstin: form.gstin,
+        businessDoc: form.businessDoc,
+        location: form.location,
+        password: form.password,
+        contactMethod,
+        verificationMethod: bizVerifyMethod,
+      })
+
+      setCompanySessionToken(result.token)
+      navigate('/company/dashboard', { state: { company: result.company } })
+    } catch (error) {
+      setServerError(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleSignin = () => {
+  const handleSignin = async () => {
     const e = {}
     if (!form.signInContact.trim()) e.signInContact = 'Email or phone is required'
     if (!form.signInPassword) e.signInPassword = 'Password is required'
     setErrors(e)
-    if (Object.keys(e).length === 0) navigate('/company/dashboard', { state: { companyName: form.signInContact, location: '' } })
+
+    if (Object.keys(e).length > 0) {
+      return
+    }
+
+    setIsSubmitting(true)
+    setServerError('')
+
+    try {
+      const result = await signInCompany({
+        contact: form.signInContact,
+        password: form.signInPassword,
+      })
+
+      setCompanySessionToken(result.token)
+      navigate('/company/dashboard', { state: { company: result.company } })
+    } catch (error) {
+      setServerError(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -116,7 +166,7 @@ export default function CompanyAuth() {
           {/* Mode toggle */}
           <div style={{ display: 'flex', background: 'var(--bg)', borderRadius: 9, padding: 3, marginBottom: 16 }}>
             {[{ v: 'signup', l: 'Register Business' }, { v: 'signin', l: 'Sign In' }].map(({ v, l }) => (
-              <button key={v} onClick={() => { setMode(v); setErrors({}) }} style={{
+              <button key={v} onClick={() => { setMode(v); setErrors({}); setServerError('') }} style={{
                 flex: 1, padding: '7px', borderRadius: 6, border: 'none',
                 background: mode === v ? 'var(--white)' : 'transparent',
                 color: mode === v ? 'var(--accent)' : 'var(--muted)',
@@ -244,10 +294,13 @@ export default function CompanyAuth() {
                 )}
               </Field>
 
-              <button className="btn-accent" style={{ width: '100%', justifyContent: 'center', marginTop: 6, padding: '10px' }}
+              <button className="btn-accent" style={{ width: '100%', justifyContent: 'center', marginTop: 6, padding: '10px', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'wait' : 'pointer' }}
+                disabled={isSubmitting}
                 onClick={handleSignup}>
-                Register & Find Talent →
+                {isSubmitting ? 'Registering...' : 'Register & Find Talent →'}
               </button>
+
+              {serverError && <p style={{ textAlign: 'center', fontSize: 12, color: '#EF4444', marginTop: 10 }}>{serverError}</p>}
 
               <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
                 By registering you agree to our Terms of Service and Privacy Policy
@@ -284,14 +337,17 @@ export default function CompanyAuth() {
                 </button>
               </div>
 
-              <button className="btn-accent" style={{ width: '100%', justifyContent: 'center', padding: '13px' }}
+              <button className="btn-accent" style={{ width: '100%', justifyContent: 'center', padding: '13px', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'wait' : 'pointer' }}
+                disabled={isSubmitting}
                 onClick={handleSignin}>
-                Sign In →
+                {isSubmitting ? 'Signing In...' : 'Sign In →'}
               </button>
+
+              {serverError && <p style={{ textAlign: 'center', fontSize: 12, color: '#EF4444', marginTop: 10 }}>{serverError}</p>}
 
               <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--muted)', marginTop: 20 }}>
                 Not registered yet?{' '}
-                <button onClick={() => { setMode('signup'); setErrors({}) }} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={() => { setMode('signup'); setErrors({}); setServerError('') }} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                   Register your business
                 </button>
               </p>

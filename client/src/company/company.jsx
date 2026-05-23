@@ -1,92 +1,31 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import {
+  buildDefaultCompanyDashboardState,
+  mergeCompanyDashboardState,
+  mergeCompanyProfile,
+} from './companyDemoData'
+import {
+  clearCompanySessionToken,
+  fetchCurrentCompany,
+  getCompanySessionToken,
+  fetchCompanyTalent,
+  fetchCompanyPayment,
+  fetchCompanyWorkspace,
+  logoutCompany,
+  saveCompanyGigManagement,
+  saveCompanyPayment,
+  saveCompanyProfile,
+  saveCompanyWorkspace,
+} from './companyApi'
+import { buildDefaultCompanyGigManagementState, mergeCompanyGigManagementState } from './companyGigDemoData'
+import { buildDefaultCompanyPaymentState, mergeCompanyPaymentState } from './companyPaymentDemoData'
+import { DEMO_TALENT_PROFILES, mergeTalentProfiles } from './companyTalentDemoData'
+import { buildDefaultCompanyWorkspaceState, mergeCompanyWorkspaceState } from './companyWorkspaceDemoData'
 import GigManagement from './GigManagement'
 import PaymentSection from './PaymentSection'
 import SetupBusinessProfile from './SetupBusinessProfile'
 import ProjectWorkspace from './ProjectWorkspace'
-
-const studentProfiles = [
-  {
-    name: 'Riya Sharma',
-    college: 'Ranchi University',
-    location: 'Ranchi',
-    skills: ['React', 'Node.js', 'UI/UX Design'],
-    skillsByLevel: { Pro: ['React'], Intermediate: ['Node.js', 'UI/UX Design'], Beginner: [] },
-    streak: 21,
-    score: 870,
-    projects: 4,
-    github: 'github.com/riyasharma',
-    contactInfo: [
-      { label: 'Email', value: 'riya.sharma@skillbridge.demo' },
-      { label: 'WhatsApp', value: '+91 98765 41001' },
-    ],
-    intro: 'Frontend-focused student with strong UI thinking and clean React project execution.',
-    savedProjects: [
-      { name: 'Creator Portfolio Studio', desc: 'Built a React portfolio builder with reusable page sections and export-ready layouts.' },
-      { name: 'Campus Event Landing Page', desc: 'Designed and shipped a polished event promo site with ticket CTA sections and motion cards.' },
-    ],
-  },
-  {
-    name: 'Aman Dubey',
-    college: 'LNCT Bhopal',
-    location: 'Bhopal',
-    skills: ['Python', 'Data Analysis', 'Excel/Sheets'],
-    skillsByLevel: { Pro: ['Python'], Intermediate: ['Data Analysis'], Beginner: ['Excel/Sheets'] },
-    streak: 12,
-    score: 810,
-    projects: 3,
-    github: 'github.com/amandubey',
-    contactInfo: [
-      { label: 'Email', value: 'aman.dubey@skillbridge.demo' },
-      { label: 'LinkedIn', value: 'linkedin.com/in/aman-dubey-data' },
-    ],
-    intro: 'Data-focused builder who enjoys turning raw business data into usable dashboards and reports.',
-    savedProjects: [
-      { name: 'Sales Trend Analyzer', desc: 'Created a dashboard to track monthly sales movement and identify low-performing product lines.' },
-      { name: 'Inventory Health Tracker', desc: 'Built an Excel system to flag restock urgency, aging stock, and reorder patterns.' },
-    ],
-  },
-  {
-    name: 'Priya Singh',
-    college: 'BIT Mesra',
-    location: 'Ranchi',
-    skills: ['Canva', 'Social Media', 'Content Writing'],
-    skillsByLevel: { Pro: ['Content Writing'], Intermediate: ['Social Media'], Beginner: ['Canva'] },
-    streak: 8,
-    score: 790,
-    projects: 5,
-    github: 'portfolio.priyasingh.in',
-    contactInfo: [
-      { label: 'Email', value: 'priya.singh@skillbridge.demo' },
-      { label: 'Instagram', value: '@priyawrites' },
-    ],
-    intro: 'Content creator with strong campaign storytelling, post design consistency, and audience-focused writing.',
-    savedProjects: [
-      { name: 'Festival Campaign Pack', desc: 'Produced a full content calendar, promo post set, and caption framework for a festive brand launch.' },
-      { name: 'Brand Voice Guide', desc: 'Defined content tone, visual style, and CTA format for recurring social media posts.' },
-    ],
-  },
-  {
-    name: 'Rohit Kumar',
-    college: 'NIT Jamshedpur',
-    location: 'Jamshedpur',
-    skills: ['WordPress', 'SEO', 'UI/UX Design'],
-    skillsByLevel: { Pro: ['SEO'], Intermediate: ['WordPress'], Beginner: ['UI/UX Design'] },
-    streak: 15,
-    score: 830,
-    projects: 6,
-    github: 'github.com/rohitkumar',
-    contactInfo: [
-      { label: 'Email', value: 'rohit.kumar@skillbridge.demo' },
-      { label: 'Phone', value: '+91 98765 41004' },
-    ],
-    intro: 'Website and SEO enthusiast focused on performance, accessibility, and practical small-business websites.',
-    savedProjects: [
-      { name: 'Local Business Website Revamp', desc: 'Improved information architecture, page loading speed, and lead capture sections.' },
-      { name: 'SEO Audit Board', desc: 'Created a simple audit sheet for keyword gaps, metadata fixes, and content opportunities.' },
-    ],
-  },
-]
 
 const SKILL_LEVELS = ['All', 'Beginner', 'Intermediate', 'Pro']
 const VERIFIED_SKILL_SET = new Set(['React', 'Node.js', 'UI/UX Design', 'Python', 'SEO', 'Content Writing'])
@@ -151,6 +90,7 @@ function TalentProfileModal({ profile, onClose }) {
 
   return (
     <div
+      className="responsive-modal-shell"
       style={{
         position: 'fixed',
         inset: 0,
@@ -164,7 +104,7 @@ function TalentProfileModal({ profile, onClose }) {
       }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
+      <div className="responsive-modal-card" style={{
         width: '100%',
         maxWidth: 560,
         maxHeight: '90vh',
@@ -174,7 +114,7 @@ function TalentProfileModal({ profile, onClose }) {
         border: '1px solid var(--border)',
         boxShadow: 'var(--shadow-lg)',
       }}>
-        <div style={{
+        <div className="responsive-modal-header" style={{
           background: 'linear-gradient(135deg, var(--dark) 0%, #1E1B4B 100%)',
           borderRadius: '20px 20px 0 0',
           padding: '24px 28px',
@@ -241,7 +181,7 @@ function TalentProfileModal({ profile, onClose }) {
           </button>
         </div>
 
-        <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="responsive-modal-body" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Skills</div>
@@ -289,7 +229,7 @@ function TalentProfileModal({ profile, onClose }) {
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Intro Video</div>
             <div style={{ background: '#000', borderRadius: 12, overflow: 'hidden', aspectRatio: '16/7', maxWidth: 460 }}>
-              <video ref={videoRef} src={DEMO_VIDEO_URL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onEnded={() => setIsPlaying(false)} />
+              <video ref={videoRef} src={profile.videoUrl || DEMO_VIDEO_URL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onEnded={() => setIsPlaying(false)} />
             </div>
             <button
               onClick={togglePlay}
@@ -341,7 +281,7 @@ function TalentProfileModal({ profile, onClose }) {
 
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Projects</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+            <div className="responsive-projects-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
               {profile.savedProjects.map(project => (
                 <div key={project.name} style={{ background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', padding: '14px 16px' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)', marginBottom: 8 }}>{project.name}</div>
@@ -363,8 +303,11 @@ function TalentProfileModal({ profile, onClose }) {
 export default function CompanyDashboard() {
   const navigate = useNavigate()
   const { state } = useLocation()
-  const companyName = state?.companyName || 'Your Business'
-  const location = state?.location || ''
+  const initialCompany = state?.company || state || {}
+  const companyName = initialCompany.businessName || initialCompany.companyName || 'Your Business'
+  const location = initialCompany.location || ''
+  const sessionTokenRef = useRef(getCompanySessionToken())
+  const didHydrateRef = useRef(false)
 
   const [active, setActive] = useState('business')
   const [selectedTalent, setSelectedTalent] = useState(null)
@@ -374,24 +317,18 @@ export default function CompanyDashboard() {
     skill: 'All',
     level: 'All',
   })
-  const [businessProfile, setBusinessProfile] = useState({
-    businessName: companyName,
-    location,
-    industry: '',
-    website: '',
-    teamSize: '',
-    workModes: [],
-    description: '',
-    hiringCategories: '',
-    requiredSkills: '',
-    contactEmail: '',
-    contactPhone: '',
-  })
+  const [businessProfile, setBusinessProfile] = useState(() => mergeCompanyProfile(initialCompany.businessProfile || initialCompany, { businessName: companyName, location }))
+  const [dashboardState, setDashboardState] = useState(() => mergeCompanyDashboardState(initialCompany.dashboardState || buildDefaultCompanyDashboardState()))
+  const [gigManagementState, setGigManagementState] = useState(() => mergeCompanyGigManagementState(initialCompany.gigManagementState || buildDefaultCompanyGigManagementState()))
+  const [paymentState, setPaymentState] = useState(() => mergeCompanyPaymentState(initialCompany.paymentState || buildDefaultCompanyPaymentState()))
+  const [projectWorkspaceState, setProjectWorkspaceState] = useState(() => mergeCompanyWorkspaceState(initialCompany.projectWorkspaceState || buildDefaultCompanyWorkspaceState()))
+  const [talentProfiles, setTalentProfiles] = useState(() => DEMO_TALENT_PROFILES)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const availableLocations = ['All', ...new Set(studentProfiles.map(profile => profile.location))]
-  const availableSkills = ['All', ...new Set(studentProfiles.flatMap(profile => profile.skills))]
+  const availableLocations = ['All', ...new Set(talentProfiles.map(profile => profile.location))]
+  const availableSkills = ['All', ...new Set(talentProfiles.flatMap(profile => profile.skills))]
 
-  const filteredTalent = studentProfiles.filter(profile => {
+  const filteredTalent = talentProfiles.filter(profile => {
     const trustPass = profile.score >= talentFilters.minTrustScore
     const locationPass = talentFilters.location === 'All' || profile.location === talentFilters.location
     const skillPass = talentFilters.skill === 'All' || profile.skills.includes(talentFilters.skill)
@@ -434,28 +371,228 @@ export default function CompanyDashboard() {
   ]
   const doneChecklist = checklist.filter(item => item.done).length
 
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCompany() {
+      if (!sessionTokenRef.current) {
+        didHydrateRef.current = true
+        return
+      }
+
+      try {
+        const result = await fetchCurrentCompany(sessionTokenRef.current)
+
+        if (cancelled) {
+          return
+        }
+
+        setBusinessProfile(mergeCompanyProfile(result.company.businessProfile || result.company, { businessName: companyName, location }))
+        setDashboardState(mergeCompanyDashboardState(result.company.dashboardState))
+        setGigManagementState(mergeCompanyGigManagementState(result.company.gigManagementState))
+        setPaymentState(mergeCompanyPaymentState(result.company.paymentState))
+        setProjectWorkspaceState(mergeCompanyWorkspaceState(result.company.projectWorkspaceState))
+      } catch (error) {
+        if (!cancelled) {
+          clearCompanySessionToken()
+          sessionTokenRef.current = ''
+        }
+      } finally {
+        if (!cancelled) {
+          didHydrateRef.current = true
+        }
+      }
+    }
+
+    loadCompany()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadTalentProfiles() {
+      if (!sessionTokenRef.current) {
+        return
+      }
+
+      try {
+        const result = await fetchCompanyTalent(sessionTokenRef.current)
+
+        if (!cancelled) {
+          setTalentProfiles(mergeTalentProfiles(result.talentProfiles || []))
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setTalentProfiles(DEMO_TALENT_PROFILES)
+        }
+      }
+    }
+
+    loadTalentProfiles()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadPayment() {
+      if (!sessionTokenRef.current) {
+        return
+      }
+
+      try {
+        const result = await fetchCompanyPayment(sessionTokenRef.current)
+
+        if (!cancelled) {
+          setPaymentState(mergeCompanyPaymentState(result.paymentState))
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPaymentState(buildDefaultCompanyPaymentState())
+        }
+      }
+    }
+
+    loadPayment()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!sessionTokenRef.current || !didHydrateRef.current) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      saveCompanyPayment(sessionTokenRef.current, {
+        paymentState,
+      }).catch(() => {})
+    }, 350)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [paymentState])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadWorkspace() {
+      if (!sessionTokenRef.current) {
+        return
+      }
+
+      try {
+        const result = await fetchCompanyWorkspace(sessionTokenRef.current)
+
+        if (!cancelled) {
+          setProjectWorkspaceState(mergeCompanyWorkspaceState(result.projectWorkspaceState))
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setProjectWorkspaceState(buildDefaultCompanyWorkspaceState())
+        }
+      }
+    }
+
+    loadWorkspace()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!sessionTokenRef.current || !didHydrateRef.current) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      saveCompanyProfile(sessionTokenRef.current, {
+        businessProfile,
+        dashboardState,
+      }).catch(() => {})
+    }, 350)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [businessProfile, dashboardState])
+
+  useEffect(() => {
+    if (!sessionTokenRef.current || !didHydrateRef.current) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      saveCompanyGigManagement(sessionTokenRef.current, {
+        gigManagementState,
+      }).catch(() => {})
+    }, 350)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [gigManagementState])
+
+  useEffect(() => {
+    if (!sessionTokenRef.current || !didHydrateRef.current) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      saveCompanyWorkspace(sessionTokenRef.current, {
+        projectWorkspaceState,
+      }).catch(() => {})
+    }, 350)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [projectWorkspaceState])
+
+  const handleLogout = async () => {
+    const token = sessionTokenRef.current
+
+    clearCompanySessionToken()
+    sessionTokenRef.current = ''
+
+    if (token) {
+      try {
+        await logoutCompany(token)
+      } catch (error) {
+        // Ignore logout failures so the user can still exit cleanly.
+      }
+    }
+
+    navigate('/')
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)' }}>
+    <div className="dashboard-shell company-dashboard" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)' }}>
 
       {/* Navbar */}
-      <nav style={{
+      <nav className="dashboard-nav" style={{
         height: 52, background: 'var(--white)',
         borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 24px', position: 'sticky', top: 0, zIndex: 100,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: 7,
-            background: 'linear-gradient(135deg, var(--accent), #EA580C)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontWeight: 900, fontSize: 13,
-          }}>S</div>
+          <button type="button" className="mobile-only mobile-menu-toggle" onClick={() => setSidebarOpen(true)}>
+            ☰
+          </button>
+          <img
+            src="/logo.png"
+            alt="SkillBridge logo"
+            style={{ width: 28, height: 28, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }}
+          />
           <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--dark)', letterSpacing: '-0.02em' }}>SkillBridge</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 10px', borderRadius: 8 }}>
+          <div className="dashboard-user-meta" style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 10px', borderRadius: 8 }}>
             <div style={{
               width: 30, height: 30, borderRadius: '50%',
               background: 'linear-gradient(135deg, var(--accent), #EA580C)',
@@ -464,24 +601,28 @@ export default function CompanyDashboard() {
             }}>{businessProfile.businessName[0]?.toUpperCase() || 'B'}</div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dark)', lineHeight: 1.2 }}>{businessProfile.businessName}</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)' }}>{businessProfile.location || 'Business'}</div>
+              <div className="dashboard-user-subtitle" style={{ fontSize: 11, color: 'var(--muted)' }}>{businessProfile.location || 'Business'}</div>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Body */}
-      <div style={{ display: 'flex', flex: 1 }}>
+      <div className="dashboard-body" style={{ display: 'flex', flex: 1 }}>
+        <div className={`dashboard-overlay${sidebarOpen ? ' is-open' : ''}`} onClick={() => setSidebarOpen(false)} />
 
         {/* Sidebar */}
-        <aside style={{
+        <aside className={`dashboard-sidebar${sidebarOpen ? ' is-open' : ''}`} style={{
           width: 220, background: 'var(--white)',
           borderRight: '1px solid var(--border)',
           padding: '20px 12px', display: 'flex', flexDirection: 'column', gap: 4,
           position: 'sticky', top: 52, height: 'calc(100vh - 52px)', overflowY: 'auto',
         }}>
           {NAV_ITEMS.map(item => (
-            <button key={item.key} onClick={() => setActive(item.key)} style={{
+            <button key={item.key} onClick={() => {
+              setActive(item.key)
+              setSidebarOpen(false)
+            }} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 14px', borderRadius: 9, border: 'none',
               background: active === item.key ? 'var(--accent-light)' : 'transparent',
@@ -497,7 +638,7 @@ export default function CompanyDashboard() {
             </button>
           ))}
           <div style={{ flex: 1 }} />
-          <button onClick={() => navigate('/')} style={{
+          <button onClick={handleLogout} style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '10px 14px', borderRadius: 9, border: 'none',
             background: 'transparent', color: '#EF4444',
@@ -511,11 +652,11 @@ export default function CompanyDashboard() {
         </aside>
 
         {/* Main content */}
-        <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
+        <main className="dashboard-main" style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
 
           {active === 'business' && (
             <div>
-              <div style={{
+              <div className="responsive-hero" style={{
                 background: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)',
                 borderRadius: 16, padding: '24px 28px',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -535,16 +676,12 @@ export default function CompanyDashboard() {
                 </div>
                 <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: '14px 22px', textAlign: 'center' }}>
                   <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginBottom: 2 }}>Matched Students</div>
-                  <div style={{ color: 'white', fontSize: 36, fontWeight: 900, lineHeight: 1 }}>{studentProfiles.length}</div>
+                  <div style={{ color: 'white', fontSize: 36, fontWeight: 900, lineHeight: 1 }}>{dashboardState.matchedStudents}</div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-                {[
-                  { label: 'Active GIGs', value: '2', icon: '📋' },
-                  { label: 'Applications', value: '7', icon: '📥' },
-                  { label: 'Total Talent', value: `${studentProfiles.length}`, icon: '👥' },
-                ].map(stat => (
+              <div className="responsive-card-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+                {dashboardState.stats.map(stat => (
                   <div key={stat.label} style={{ background: 'var(--white)', borderRadius: 12, padding: '16px 18px', border: '1px solid var(--border)' }}>
                     <div style={{ fontSize: 20, marginBottom: 6 }}>{stat.icon}</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--dark)', marginBottom: 2 }}>{stat.value}</div>
@@ -553,7 +690,7 @@ export default function CompanyDashboard() {
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 0.85fr', gap: 16, marginBottom: 20 }}>
+              <div className="responsive-split-main" style={{ display: 'grid', gridTemplateColumns: '1.15fr 0.85fr', gap: 16, marginBottom: 20 }}>
                 <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', padding: '18px 20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
                     <div>
@@ -569,7 +706,7 @@ export default function CompanyDashboard() {
                     <div style={{ width: `${profileCompletion}%`, height: '100%', background: 'linear-gradient(90deg, #22C55E, #16A34A)' }} />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                  <div className="responsive-form-grid-tight" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                     {checklist.map(item => (
                       <div key={item.label} style={{ background: 'var(--bg)', borderRadius: 9, border: '1px solid var(--border)', padding: '9px 10px', fontSize: 12, color: item.done ? '#065F46' : 'var(--muted)', fontWeight: 600 }}>
                         {item.done ? '✅' : '⬜'} {item.label}
@@ -611,12 +748,8 @@ export default function CompanyDashboard() {
 
               <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', padding: '18px 20px' }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--dark)', marginBottom: 10 }}>Recent Hiring Activity</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                  {[
-                    { name: 'Aman Verma', status: 'Submitted interview task for Frontend Internship', when: '2 hours ago', color: '#1D4ED8', bg: '#DBEAFE' },
-                    { name: 'Ritika Sen', status: 'Shortlisted for Frontend Internship', when: 'Today', color: '#065F46', bg: '#D1FAE5' },
-                    { name: 'Priya Singh', status: 'Applied to Social Media Content Role', when: 'Yesterday', color: '#92400E', bg: '#FEF3C7' },
-                  ].map(item => (
+                <div className="responsive-card-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {dashboardState.recentHiringActivity.map(item => (
                     <div key={item.name + item.status} style={{ background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', padding: '11px 12px' }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)', marginBottom: 4 }}>{item.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8, lineHeight: 1.5 }}>{item.status}</div>
@@ -637,7 +770,7 @@ export default function CompanyDashboard() {
               </h3>
 
               <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', padding: '14px 16px', marginBottom: 14 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr auto', gap: 10, alignItems: 'end', marginBottom: 10 }}>
+                <div className="responsive-filter-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr auto', gap: 10, alignItems: 'end', marginBottom: 10 }}>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                       Min TrustScore
@@ -734,7 +867,7 @@ export default function CompanyDashboard() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {filteredTalent.map((p, i) => (
-                  <div key={p.name} style={{
+                  <div className="responsive-hero" key={p.name} style={{
                     background: 'var(--white)', borderRadius: 12,
                     padding: '18px 22px', border: '1px solid var(--border)',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -751,7 +884,7 @@ export default function CompanyDashboard() {
                       }}>{p.name[0]}</div>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--dark)', marginBottom: 2 }}>{p.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 7 }}>{p.college} · {p.location} · {p.projects} projects</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 7 }}>{p.location} · {p.projects} projects</div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           {p.skills.map(s => (
                             <span key={s} style={{ background: 'var(--accent-light)', color: 'var(--accent)', padding: '3px 10px', borderRadius: 100, fontSize: 12, fontWeight: 600 }}>
@@ -793,9 +926,9 @@ export default function CompanyDashboard() {
             <SetupBusinessProfile profile={businessProfile} onSave={setBusinessProfile} />
           )}
 
-          {active === 'gig'       && <GigManagement />}
-          {active === 'workspace' && <ProjectWorkspace />}
-          {active === 'payment'   && <PaymentSection />}
+          {active === 'gig'       && <GigManagement gigManagementState={gigManagementState} onSaveState={setGigManagementState} />}
+          {active === 'workspace' && <ProjectWorkspace projectWorkspaceState={projectWorkspaceState} onSaveState={setProjectWorkspaceState} />}
+          {active === 'payment'   && <PaymentSection paymentState={paymentState} onSaveState={setPaymentState} />}
 
         </main>
       </div>

@@ -3,9 +3,11 @@ export default function StudentSidebar({
   active,
   onSelect,
   onLogout,
+  isOpen,
+  onClose,
 }) {
   return (
-    <aside style={{
+    <aside className={`dashboard-sidebar${isOpen ? ' is-open' : ''}`} style={{
       width: 220, background: 'var(--white)',
       borderRight: '1px solid var(--border)',
       padding: '20px 12px', display: 'flex', flexDirection: 'column', gap: 4,
@@ -14,7 +16,10 @@ export default function StudentSidebar({
       {navItems.map(item => (
         <button
           key={item.key}
-          onClick={() => onSelect(item.key)}
+          onClick={() => {
+            onSelect(item.key)
+            onClose?.()
+          }}
           style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '10px 14px', borderRadius: 9, border: 'none',
@@ -33,7 +38,10 @@ export default function StudentSidebar({
       ))}
       <div style={{ flex: 1 }} />
       <button
-        onClick={onLogout}
+        onClick={() => {
+          onClose?.()
+          onLogout()
+        }}
         style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '10px 14px', borderRadius: 9, border: 'none',

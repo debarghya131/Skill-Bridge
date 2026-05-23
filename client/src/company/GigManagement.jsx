@@ -1,57 +1,5 @@
-import { useMemo, useState } from 'react'
-
-const GIG_STATS = [
-  { label: 'Open GIGs', value: '4', tone: '#1D4ED8', bg: '#DBEAFE', icon: '📋' },
-  { label: 'Applications', value: '26', tone: '#065F46', bg: '#D1FAE5', icon: '📥' },
-  { label: 'Interview Tasks Sent', value: '9', tone: '#92400E', bg: '#FEF3C7', icon: '🚀' },
-  { label: 'Active Hires', value: '3', tone: '#7C3AED', bg: '#EDE9FE', icon: '⚡' },
-]
-
-const GIG_LIST = [
-  {
-    id: 1,
-    title: 'Frontend Internship',
-    mode: 'Remote',
-    budget: '₹10,000 / month',
-    applicants: 11,
-    shortlisted: 4,
-    interviewTasks: 3,
-    status: 'Hiring',
-    skills: ['React', 'UI/UX Design'],
-    postedOn: 'Posted 2 days ago',
-  },
-  {
-    id: 2,
-    title: 'Social Media Content Role',
-    mode: 'Hybrid',
-    budget: '₹6,000 / month',
-    applicants: 8,
-    shortlisted: 3,
-    interviewTasks: 2,
-    status: 'Reviewing',
-    skills: ['Canva', 'Content Marketing'],
-    postedOn: 'Posted 4 days ago',
-  },
-  {
-    id: 3,
-    title: 'Node.js API Task',
-    mode: 'On-site',
-    budget: '₹12,000 / month',
-    applicants: 5,
-    shortlisted: 2,
-    interviewTasks: 2,
-    status: 'In Progress',
-    skills: ['Node.js', 'REST APIs'],
-    postedOn: 'Posted 1 week ago',
-  },
-]
-
-const RECENT_ACTIVITY = [
-  'Riya Sharma completed the Frontend Internship interview task.',
-  'Aman Dubey applied for Node.js API Task 3 hours ago.',
-  'Priya Singh was shortlisted for Social Media Content Role.',
-  'Rohit Kumar submitted portfolio links for UI project review.',
-]
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { buildDefaultCompanyGigManagementState, mergeCompanyGigManagementState } from './companyGigDemoData'
 
 const statusMeta = {
   Hiring: { bg: '#D1FAE5', color: '#065F46' },
@@ -59,76 +7,69 @@ const statusMeta = {
   'In Progress': { bg: '#EDE9FE', color: '#7C3AED' },
 }
 
-const APPLICANTS_BY_GIG = {
-  1: [
-    {
-      id: 'g1-a1',
-      name: 'Aman Verma',
-      trustScore: 920,
-      location: 'Delhi',
-      college: 'NSUT Delhi',
-      skills: ['React', 'UI/UX Design', 'Figma'],
-      intro: 'Frontend-focused builder with strong component architecture and polished UI systems.',
-      projects: ['Creator Portfolio Studio', 'Campus Event Landing Page', 'Design System Kit'],
-    },
-    {
-      id: 'g1-a2',
-      name: 'Ritika Sen',
-      trustScore: 870,
-      location: 'Bengaluru',
-      college: 'PES University',
-      skills: ['React', 'Tailwind', 'UI/UX Design'],
-      intro: 'Ships responsive interfaces quickly and enjoys startup landing pages and dashboards.',
-      projects: ['Skill Swap Marketplace', 'Hackathon Demo Site'],
-    },
-  ],
-  2: [
-    {
-      id: 'g2-a1',
-      name: 'Sneha Iyer',
-      trustScore: 860,
-      location: 'Bengaluru',
-      college: 'Christ University',
-      skills: ['Content Marketing', 'SEO', 'Canva'],
-      intro: 'Campaign storyteller with strong social copy and creative post planning.',
-      projects: ['Campus Fest Growth Campaign', 'SEO Content Sprint'],
-    },
-    {
-      id: 'g2-a2',
-      name: 'Priya Singh',
-      trustScore: 790,
-      location: 'Ranchi',
-      college: 'BIT Mesra',
-      skills: ['Content Writing', 'Social Media', 'Canva'],
-      intro: 'Strong at audience-first writing and structured weekly social calendars.',
-      projects: ['Festival Campaign Pack', 'Brand Voice Guide'],
-    },
-  ],
-  3: [
-    {
-      id: 'g3-a1',
-      name: 'Ravi Kumar',
-      trustScore: 900,
-      location: 'Lucknow',
-      college: 'IIIT Lucknow',
-      skills: ['Node.js', 'REST APIs', 'MongoDB'],
-      intro: 'Backend engineer with strong API design and auth/role access patterns.',
-      projects: ['Job Board API', 'Inventory Service Layer'],
-    },
-    {
-      id: 'g3-a2',
-      name: 'Kabir Nair',
-      trustScore: 905,
-      location: 'Hyderabad',
-      college: 'IIIT Hyderabad',
-      skills: ['Node.js', 'PostgreSQL', 'React'],
-      intro: 'Full-stack builder focused on scalable service architecture and product delivery.',
-      projects: ['SaaS Billing Console', 'Mentor Match Platform'],
-    },
-  ],
+const PROFILE_VIDEO_URL = '/src/assets/otherintroduction.mp4'
+const PROFILE_LEVEL_META = {
+  Pro: { bg: '#F3E8FF', color: '#7C3AED' },
+  Intermediate: { bg: '#EFF6FF', color: '#1D4ED8' },
+  Beginner: { bg: '#F0FDF4', color: '#15803D' },
 }
 
-function CreateGigModal({ open, onClose, onCreate }) {
+function slugifyName(name = '') {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/(^\.|\.$)/g, '') || 'student'
+}
+
+function buildApplicantProfile(applicant) {
+  const githubSlug = slugifyName(applicant.name)
+  const skills = Array.isArray(applicant.skills) ? applicant.skills : []
+
+  return {
+    ...applicant,
+    score: applicant.score ?? applicant.trustScore ?? 0,
+    skills,
+    skillsByLevel: applicant.skillsByLevel || {
+      Pro: skills.slice(0, 1),
+      Intermediate: skills.slice(1),
+      Beginner: [],
+    },
+    streak: applicant.streak ?? 21,
+    github: applicant.github || `github.com/${githubSlug}`,
+    contactInfo: Array.isArray(applicant.contactInfo) && applicant.contactInfo.length > 0
+      ? applicant.contactInfo
+      : [
+        { label: 'Email', value: `${githubSlug}@skillbridge.demo` },
+        { label: 'WhatsApp', value: '+91 98765 41001' },
+      ],
+    savedProjects: Array.isArray(applicant.savedProjects) && applicant.savedProjects.length > 0
+      ? applicant.savedProjects
+      : (applicant.projects || []).map(project => (
+        typeof project === 'string'
+          ? { name: project, desc: 'Shared as a demo portfolio project for hiring review.' }
+          : project
+      )),
+    videoUrl: applicant.videoUrl || PROFILE_VIDEO_URL,
+  }
+}
+
+function getSkillLevel(profile, skill) {
+  if (!profile.skillsByLevel) {
+    return null
+  }
+
+  for (const [level, list] of Object.entries(profile.skillsByLevel)) {
+    if (Array.isArray(list) && list.includes(skill)) {
+      return level
+    }
+  }
+
+  return null
+}
+
+function updateCountString(value, delta) {
+  const nextValue = (Number(value) || 0) + delta
+  return String(Math.max(nextValue, 0))
+}
+
+function CreateGigModal({ open, initialData, onClose, onCreate, onUpdate, mode }) {
   const [form, setForm] = useState({
     title: '',
     mode: 'Remote',
@@ -136,6 +77,31 @@ function CreateGigModal({ open, onClose, onCreate }) {
     status: 'Hiring',
     skills: '',
   })
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    if (mode === 'edit' && initialData) {
+      setForm({
+        title: initialData.title || '',
+        mode: initialData.mode || 'Remote',
+        budget: initialData.budget || '',
+        status: initialData.status || 'Hiring',
+        skills: Array.isArray(initialData.skills) ? initialData.skills.join(', ') : '',
+      })
+      return
+    }
+
+    setForm({
+      title: '',
+      mode: 'Remote',
+      budget: '',
+      status: 'Hiring',
+      skills: '',
+    })
+  }, [initialData, mode, open])
 
   if (!open) return null
 
@@ -152,25 +118,27 @@ function CreateGigModal({ open, onClose, onCreate }) {
 
     if (!trimmedTitle || !trimmedBudget) return
 
-    onCreate({
+    const payload = {
       title: trimmedTitle,
       mode: form.mode,
       budget: trimmedBudget,
       status: form.status,
       skills: skills.length > 0 ? skills : ['General'],
-    })
+    }
 
-    setForm({
-      title: '',
-      mode: 'Remote',
-      budget: '',
-      status: 'Hiring',
-      skills: '',
-    })
+    if (mode === 'edit' && initialData) {
+      onUpdate({
+        ...initialData,
+        ...payload,
+      })
+    } else {
+      onCreate(payload)
+    }
   }
 
   return (
     <div
+      className="responsive-modal-shell"
       style={{
         position: 'fixed',
         inset: 0,
@@ -185,6 +153,7 @@ function CreateGigModal({ open, onClose, onCreate }) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <form
+        className="responsive-modal-card"
         onSubmit={handleSubmit}
         style={{
           width: '100%',
@@ -196,7 +165,7 @@ function CreateGigModal({ open, onClose, onCreate }) {
           overflow: 'hidden',
         }}
       >
-        <div style={{
+        <div className="responsive-modal-header" style={{
           padding: '18px 20px',
           borderBottom: '1px solid var(--border)',
           display: 'flex',
@@ -205,13 +174,13 @@ function CreateGigModal({ open, onClose, onCreate }) {
           gap: 12,
         }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dark)' }}>Create New GIG</div>
-            <div style={{ fontSize: 12, color: 'var(--muted)' }}>Add role details to publish this GIG.</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dark)' }}>{mode === 'edit' ? 'Edit GIG' : 'Create New GIG'}</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)' }}>{mode === 'edit' ? 'Update role details for this GIG.' : 'Add role details to publish this GIG.'}</div>
           </div>
           <button type="button" onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--muted)', fontSize: 18, cursor: 'pointer' }}>×</button>
         </div>
 
-        <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="responsive-modal-body responsive-form-grid" style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6, gridColumn: '1 / -1' }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>Role Title *</span>
             <input
@@ -268,7 +237,7 @@ function CreateGigModal({ open, onClose, onCreate }) {
             Cancel
           </button>
           <button type="submit" className="btn-accent" style={{ padding: '8px 14px', fontSize: 12 }}>
-            Create GIG
+            {mode === 'edit' ? 'Save Changes' : 'Create GIG'}
           </button>
         </div>
       </form>
@@ -281,6 +250,7 @@ function ApplicantsModal({ gig, applicants, onClose, onViewProfile }) {
 
   return (
     <div
+      className="responsive-modal-shell"
       style={{
         position: 'fixed',
         inset: 0,
@@ -294,7 +264,7 @@ function ApplicantsModal({ gig, applicants, onClose, onViewProfile }) {
       }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
+      <div className="responsive-modal-card" style={{
         width: '100%',
         maxWidth: 760,
         maxHeight: '88vh',
@@ -304,7 +274,7 @@ function ApplicantsModal({ gig, applicants, onClose, onViewProfile }) {
         border: '1px solid var(--border)',
         boxShadow: 'var(--shadow-lg)',
       }}>
-        <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div className="responsive-modal-header" style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dark)' }}>{gig.title} Applicants</div>
             <div style={{ fontSize: 12, color: 'var(--muted)' }}>{applicants.length} candidate{applicants.length !== 1 ? 's' : ''} available</div>
@@ -312,12 +282,12 @@ function ApplicantsModal({ gig, applicants, onClose, onViewProfile }) {
           <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--muted)', fontSize: 18, cursor: 'pointer' }}>×</button>
         </div>
 
-        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="responsive-modal-body" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {applicants.map(applicant => (
-            <div key={applicant.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div key={applicant.id} className="responsive-stack" style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--dark)', marginBottom: 3 }}>{applicant.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 7 }}>{applicant.college} · {applicant.location}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 7 }}>{applicant.location}</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {applicant.skills.map(skill => (
                     <span key={skill} style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '3px 9px', borderRadius: 100, fontSize: 11, fontWeight: 700 }}>
@@ -326,10 +296,10 @@ function ApplicantsModal({ gig, applicants, onClose, onViewProfile }) {
                   ))}
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
+              <div className="responsive-company-gig-side" style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--dark)' }}>{applicant.trustScore}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>TrustScore</div>
-                <button className="btn-accent" onClick={() => onViewProfile(applicant)} style={{ padding: '8px 14px', fontSize: 12 }}>
+                <button className="btn-accent" onClick={() => onViewProfile(buildApplicantProfile(applicant))} style={{ padding: '8px 14px', fontSize: 12 }}>
                   View Profile
                 </button>
               </div>
@@ -342,10 +312,31 @@ function ApplicantsModal({ gig, applicants, onClose, onViewProfile }) {
 }
 
 function ApplicantProfileModal({ applicant, onClose }) {
+  const videoRef = useRef(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [levelFilter, setLevelFilter] = useState('All')
+
   if (!applicant) return null
+
+  const filteredSkills = levelFilter === 'All'
+    ? applicant.skills
+    : (applicant.skillsByLevel?.[levelFilter] || [])
+
+  const togglePlay = () => {
+    if (!videoRef.current) return
+
+    if (isPlaying) {
+      videoRef.current.pause()
+      setIsPlaying(false)
+    } else {
+      videoRef.current.play()
+      setIsPlaying(true)
+    }
+  }
 
   return (
     <div
+      className="responsive-modal-shell"
       style={{
         position: 'fixed',
         inset: 0,
@@ -359,57 +350,186 @@ function ApplicantProfileModal({ applicant, onClose }) {
       }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
+      <div className="responsive-modal-card" style={{
         width: '100%',
-        maxWidth: 680,
+        maxWidth: 760,
+        maxHeight: '90vh',
+        overflowY: 'auto',
         background: 'var(--white)',
-        borderRadius: 16,
+        borderRadius: 20,
         border: '1px solid var(--border)',
         boxShadow: 'var(--shadow-lg)',
-        overflow: 'hidden',
       }}>
-        <div style={{
-          padding: '22px 24px',
+        <div className="responsive-modal-header" style={{
+          padding: '24px 28px',
           background: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           gap: 12,
+          borderRadius: '20px 20px 0 0',
         }}>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: 'white', marginBottom: 6 }}>{applicant.name}</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', padding: '4px 10px', borderRadius: 100, fontSize: 12, fontWeight: 700 }}>
-                ⭐ {applicant.trustScore} / 1000
-              </span>
-              <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>{applicant.college} · {applicant.location}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #A5B4FC, #60A5FA)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 22,
+              fontWeight: 900,
+              border: '3px solid rgba(255,255,255,0.2)',
+            }}>
+              {applicant.name[0]}
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: 'white' }}>{applicant.name}</div>
+                <span style={{ fontSize: 10, fontWeight: 800, background: '#10B981', color: 'white', padding: '2px 10px', borderRadius: 100 }}>
+                  ✓ Verified
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  background: 'linear-gradient(135deg, #6366F1, #818CF8)',
+                  color: 'white',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  padding: '4px 12px',
+                  borderRadius: 100,
+                  boxShadow: '0 0 12px rgba(99,102,241,0.6)',
+                }}>
+                  ⭐ {applicant.score} <span style={{ fontSize: 10, fontWeight: 600, opacity: 0.85 }}>/ 1000</span>
+                </span>
+                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>{applicant.location}</span>
+                <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11 }}>TrustScore™</span>
+              </div>
             </div>
           </div>
           <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.22)', background: 'rgba(255,255,255,0.12)', color: 'white', fontSize: 18, cursor: 'pointer' }}>×</button>
         </div>
 
-        <div style={{ padding: '20px 24px' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>About Applicant</div>
-          <div style={{ fontSize: 13, color: 'var(--dark)', lineHeight: 1.65, marginBottom: 14 }}>{applicant.intro}</div>
-
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-            {applicant.skills.map(skill => (
-              <span key={skill} style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 10px', borderRadius: 100, fontSize: 12, fontWeight: 700 }}>
-                {skill}
-              </span>
-            ))}
-          </div>
-
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Recent Projects</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginBottom: 16 }}>
-            {applicant.projects.map(project => (
-              <div key={project} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: 'var(--dark)', fontWeight: 700 }}>
-                {project}
+        <div className="responsive-modal-body" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div>
+            <div className="responsive-stack" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Skills</div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {['All', 'Pro', 'Intermediate', 'Beginner'].map(level => {
+                  const meta = level === 'All' ? { bg: '#F1F5F9', color: '#475569' } : PROFILE_LEVEL_META[level]
+                  return (
+                    <button
+                      key={level}
+                      onClick={() => setLevelFilter(level)}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: levelFilter === level ? meta.color : meta.bg,
+                        color: levelFilter === level ? 'white' : meta.color,
+                        padding: '3px 9px',
+                        borderRadius: 100,
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {level}
+                    </button>
+                  )
+                })}
               </div>
-            ))}
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {filteredSkills.map(skill => {
+                const level = getSkillLevel(applicant, skill)
+                const levelMeta = level ? PROFILE_LEVEL_META[level] : null
+
+                return (
+                  <span key={skill} style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'var(--primary-light)',
+                    color: 'var(--primary)',
+                    padding: '5px 12px',
+                    borderRadius: 100,
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}>
+                    {skill}
+                    {levelMeta && <span style={{ background: levelMeta.bg, color: levelMeta.color, fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 100 }}>{level}</span>}
+                    <span style={{ background: '#FFF7ED', color: '#EA580C', fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                      {applicant.streak} d streak
+                    </span>
+                  </span>
+                )
+              })}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Intro Video</div>
+            <div style={{ background: '#000', borderRadius: 12, overflow: 'hidden', aspectRatio: '16/7', maxWidth: 460 }}>
+              <video ref={videoRef} src={applicant.videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onEnded={() => setIsPlaying(false)} />
+            </div>
+            <button
+              onClick={togglePlay}
+              style={{
+                marginTop: 8,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '7px 18px',
+                borderRadius: 7,
+                border: isPlaying ? '1.5px solid #FCA5A5' : '1.5px solid #DC2626',
+                background: isPlaying ? '#FEF2F2' : '#EF4444',
+                color: isPlaying ? '#EF4444' : 'white',
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              {isPlaying ? '⏹ Stop' : '▶ Play'}
+            </button>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>GitHub</div>
+            <div style={{ background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', padding: '12px 14px', fontSize: 13, color: 'var(--dark)' }}>
+              {applicant.github}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Contact</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {applicant.contactInfo.map((item, index) => (
+                <div key={`${item.label}-${index}`} style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px 14px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>{item.label}</div>
+                  <div style={{ fontSize: 13, color: 'var(--dark)', fontWeight: 600 }}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Recent Projects</div>
+            <div className="responsive-projects-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+              {applicant.savedProjects.map(project => (
+                <div key={project.name} style={{ background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', padding: '14px 16px' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)', marginBottom: 8 }}>{project.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.55 }}>{project.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="responsive-stack" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button className="btn-accent" style={{ padding: '9px 16px', fontSize: 12 }}>Contact Applicant</button>
             <button style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
               Send Interview Task
@@ -421,23 +541,37 @@ function ApplicantProfileModal({ applicant, onClose }) {
   )
 }
 
-export default function GigManagement() {
-  const [gigs, setGigs] = useState(GIG_LIST)
+export default function GigManagement({ gigManagementState, onSaveState }) {
+  const [localState, setLocalState] = useState(() => mergeCompanyGigManagementState(gigManagementState || buildDefaultCompanyGigManagementState()))
   const [isCreateGigOpen, setIsCreateGigOpen] = useState(false)
+  const [editingGig, setEditingGig] = useState(null)
   const [selectedGigId, setSelectedGigId] = useState(null)
   const [selectedApplicant, setSelectedApplicant] = useState(null)
 
+  useEffect(() => {
+    setLocalState(mergeCompanyGigManagementState(gigManagementState || buildDefaultCompanyGigManagementState()))
+  }, [gigManagementState])
+
+  const updateLocalState = (updater) => {
+    setLocalState(current => {
+      const nextState = typeof updater === 'function' ? updater(current) : updater
+      const mergedState = mergeCompanyGigManagementState(nextState)
+      onSaveState(mergedState)
+      return mergedState
+    })
+  }
+
   const selectedGig = useMemo(
-    () => gigs.find(gig => gig.id === selectedGigId) || null,
-    [gigs, selectedGigId],
+    () => localState.gigs.find(gig => gig.id === selectedGigId) || null,
+    [localState.gigs, selectedGigId],
   )
   const selectedGigApplicants = useMemo(
-    () => (selectedGigId ? APPLICANTS_BY_GIG[selectedGigId] || [] : []),
-    [selectedGigId],
+    () => (selectedGigId ? localState.applicantsByGig?.[selectedGigId] || [] : []),
+    [localState.applicantsByGig, selectedGigId],
   )
 
   const createGig = data => {
-    const nextId = gigs.length ? Math.max(...gigs.map(item => item.id)) + 1 : 1
+    const nextId = localState.gigs.length ? Math.max(...localState.gigs.map(item => item.id)) + 1 : 1
     const newGig = {
       id: nextId,
       title: data.title,
@@ -450,15 +584,67 @@ export default function GigManagement() {
       skills: data.skills,
       postedOn: 'Posted just now',
     }
-    setGigs(current => [newGig, ...current])
+
+    updateLocalState(current => ({
+      ...current,
+      gigs: [newGig, ...current.gigs],
+      stats: current.stats.map((item, index) => (
+        index === 0
+          ? { ...item, value: updateCountString(item.value, 1) }
+          : item
+      )),
+      recentActivity: [`New GIG created for ${newGig.title}.`, ...current.recentActivity].slice(0, 8),
+      applicantsByGig: {
+        ...current.applicantsByGig,
+        [nextId]: [],
+      },
+    }))
+
     setSelectedGigId(newGig.id)
     setSelectedApplicant(null)
     setIsCreateGigOpen(false)
   }
 
+  const updateGig = updatedGig => {
+    updateLocalState(current => ({
+      ...current,
+      gigs: current.gigs.map(gig => (gig.id === updatedGig.id ? updatedGig : gig)),
+      recentActivity: [`${updatedGig.title} was updated by your team.`, ...current.recentActivity].slice(0, 8),
+    }))
+    setEditingGig(null)
+  }
+
+  const sendInterviewTask = gigId => {
+    const gig = localState.gigs.find(item => item.id === gigId)
+
+    if (!gig) {
+      return
+    }
+
+    updateLocalState(current => ({
+      ...current,
+      gigs: current.gigs.map(item => (
+        item.id === gigId
+          ? { ...item, interviewTasks: item.interviewTasks + 1 }
+          : item
+      )),
+      stats: current.stats.map((item, index) => (
+        index === 2
+          ? { ...item, value: updateCountString(item.value, 1) }
+          : item
+      )),
+      pipeline: current.pipeline.map((item, index) => (
+        index === 1
+          ? { ...item, value: updateCountString(item.value, 1) }
+          : item
+      )),
+      recentActivity: [`Interview task sent for ${gig.title}.`, ...current.recentActivity].slice(0, 8),
+    }))
+  }
+
   return (
     <div>
-      <div style={{
+      <div className="responsive-hero" style={{
         background: 'linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%)',
         borderRadius: 16,
         padding: '24px 28px',
@@ -490,8 +676,8 @@ export default function GigManagement() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
-        {GIG_STATS.map(item => (
+      <div className="responsive-card-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+        {localState.stats.map(item => (
           <div key={item.label} style={{ background: 'var(--white)', borderRadius: 12, padding: '16px 18px', border: '1px solid var(--border)' }}>
             <div style={{ fontSize: 20, marginBottom: 8 }}>{item.icon}</div>
             <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--dark)', marginBottom: 4 }}>{item.value}</div>
@@ -503,15 +689,15 @@ export default function GigManagement() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 0.95fr', gap: 16 }}>
+      <div className="responsive-split-main" style={{ display: 'grid', gridTemplateColumns: '1.55fr 0.95fr', gap: 16 }}>
         <div style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '22px 24px' }}>
           <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--dark)', marginBottom: 14 }}>Posted GIGs</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {gigs.map(gig => {
+            {localState.gigs.map(gig => {
               const meta = statusMeta[gig.status]
               return (
                 <div key={gig.id} style={{ background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--border)', padding: '16px 18px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 10, flexWrap: 'wrap' }}>
+                  <div className="responsive-stack" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 10, flexWrap: 'wrap' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
                         <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--dark)' }}>{gig.title}</span>
@@ -524,13 +710,13 @@ export default function GigManagement() {
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>{gig.budget} · {gig.postedOn}</div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
+                    <div className="responsive-company-gig-side" style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 3 }}>Interview Tasks Sent</div>
                       <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--dark)' }}>{gig.interviewTasks}</div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 12 }}>
+                  <div className="responsive-card-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 12 }}>
                     {[
                       { label: 'Applicants', value: gig.applicants },
                       { label: 'Shortlisted', value: gig.shortlisted },
@@ -551,7 +737,7 @@ export default function GigManagement() {
                     ))}
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div className="responsive-company-gig-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button
                       className="btn-accent"
                       onClick={() => {
@@ -562,10 +748,16 @@ export default function GigManagement() {
                     >
                       View Applicants
                     </button>
-                    <button style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                    <button
+                      onClick={() => sendInterviewTask(gig.id)}
+                      style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}
+                    >
                       Send Interview Task
                     </button>
-                    <button style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--muted)', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                    <button
+                      onClick={() => setEditingGig(gig)}
+                      style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--muted)', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}
+                    >
                       Edit GIG
                     </button>
                   </div>
@@ -579,12 +771,7 @@ export default function GigManagement() {
           <div style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '22px 24px' }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--dark)', marginBottom: 14 }}>Hiring Pipeline</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[
-                { label: 'New Applications', value: '12', bg: '#EFF6FF', color: '#1D4ED8' },
-                { label: 'Interview Task Pending', value: '7', bg: '#FEF3C7', color: '#92400E' },
-                { label: 'Task Submitted', value: '5', bg: '#EDE9FE', color: '#7C3AED' },
-                { label: 'Ready to Hire', value: '3', bg: '#D1FAE5', color: '#065F46' },
-              ].map(item => (
+              {localState.pipeline.map(item => (
                 <div key={item.label} style={{ background: item.bg, color: item.color, borderRadius: 10, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700 }}>
                   <span style={{ fontSize: 13 }}>{item.label}</span>
                   <span style={{ fontSize: 20, fontWeight: 900 }}>{item.value}</span>
@@ -596,7 +783,7 @@ export default function GigManagement() {
           <div style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '22px 24px' }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--dark)', marginBottom: 14 }}>Recent Activity</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {RECENT_ACTIVITY.map(item => (
+              {localState.recentActivity.map(item => (
                 <div key={item} style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--dark)', lineHeight: 1.55 }}>
                   {item}
                 </div>
@@ -617,9 +804,15 @@ export default function GigManagement() {
         onClose={() => setSelectedApplicant(null)}
       />
       <CreateGigModal
-        open={isCreateGigOpen}
-        onClose={() => setIsCreateGigOpen(false)}
+        open={isCreateGigOpen || Boolean(editingGig)}
+        initialData={editingGig}
+        mode={editingGig ? 'edit' : 'create'}
+        onClose={() => {
+          setIsCreateGigOpen(false)
+          setEditingGig(null)
+        }}
         onCreate={createGig}
+        onUpdate={updateGig}
       />
     </div>
   )

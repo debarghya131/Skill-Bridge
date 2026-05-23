@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { fetchStudentSkillHub, getStudentSessionToken, saveStudentSkillHub } from '../studentApi'
 import DailyChallenge from './Dailychallenge'
+import { buildDemoSkillHubSkills } from './skillHubDemoData'
 import SkillGapReport from './skillgapreport'
 
 const ACTION_WARNING = 'AI can detect cheating. Copy-paste, no typing, very fast typing, tab switching, idle-then-submit, same answers, multiple logins, rapid submissions, DevTools, and camera signals can affect TrustScore.'
@@ -13,26 +15,36 @@ const SKILLHUB_NAV = [
   { key: 'gap', icon: '📊', label: 'Skill Gap Report' },
 ]
 
-const INITIAL_SKILLS = [
-  { name: 'React', level: 85, category: 'Frontend', verified: true, renewalStatus: 'valid', renewalDue: 'Nov 10, 2026', trustGain: 0, trustLoss: 0, createdOn: 'Jan 12, 2026', lastEvent: 'verified', streak: 5, missedDays: 0 },
-  { name: 'Node.js', level: 70, category: 'Backend', verified: true, renewalStatus: 'due', renewalDue: 'May 03, 2026', trustGain: 4, trustLoss: 6, createdOn: 'Feb 08, 2026', lastEvent: 'renewed', streak: 2, missedDays: 2 },
-  { name: 'UI/UX Design', level: 78, category: 'Design', verified: true, renewalStatus: 'expired', renewalDue: 'Apr 01, 2026', trustGain: 6, trustLoss: 8, createdOn: 'Jan 28, 2026', lastEvent: 'expired', streak: 0, missedDays: 3 },
-  { name: 'SQL', level: 58, category: 'Analytics', verified: true, renewalStatus: 'valid', renewalDue: 'Dec 02, 2026', trustGain: 0, trustLoss: 0, createdOn: 'Feb 16, 2026', lastEvent: 'verified', streak: 7, missedDays: 0 },
-  { name: 'Power BI', level: 74, category: 'Analytics', verified: true, renewalStatus: 'valid', renewalDue: 'Sep 15, 2026', trustGain: 0, trustLoss: 0, createdOn: 'Mar 04, 2026', lastEvent: 'verified', streak: 3, missedDays: 1 },
-  { name: 'Content Marketing', level: 67, category: 'Marketing', verified: true, renewalStatus: 'due', renewalDue: 'Jun 21, 2026', trustGain: 5, trustLoss: 4, createdOn: 'Feb 25, 2026', lastEvent: 'renewed', streak: 1, missedDays: 2 },
-  { name: 'Figma', level: 88, category: 'Design', verified: true, renewalStatus: 'valid', renewalDue: 'Oct 08, 2026', trustGain: 0, trustLoss: 0, createdOn: 'Jan 30, 2026', lastEvent: 'verified', streak: 9, missedDays: 0 },
-  { name: 'REST APIs', level: 62, category: 'Backend', verified: true, renewalStatus: 'valid', renewalDue: 'Aug 18, 2026', trustGain: 0, trustLoss: 0, createdOn: 'Mar 11, 2026', lastEvent: 'verified', streak: 4, missedDays: 0 },
-  { name: 'Python', level: 60, category: 'Backend', verified: false, renewalStatus: 'unverified', renewalDue: '-', trustGain: 5, trustLoss: 0, createdOn: 'Mar 14, 2026', lastEvent: 'created', streak: 0, missedDays: 0 },
-  { name: 'Canva', level: 90, category: 'Design', verified: false, renewalStatus: 'unverified', renewalDue: '-', trustGain: 4, trustLoss: 0, createdOn: 'Apr 02, 2026', lastEvent: 'created', streak: 0, missedDays: 0 },
-  { name: 'Data Analysis', level: 55, category: 'Analytics', verified: false, renewalStatus: 'unverified', renewalDue: '-', trustGain: 5, trustLoss: 0, createdOn: 'Apr 09, 2026', lastEvent: 'created', streak: 0, missedDays: 0 },
-  { name: 'SEO', level: 48, category: 'Marketing', verified: false, renewalStatus: 'unverified', renewalDue: '-', trustGain: 4, trustLoss: 0, createdOn: 'Apr 12, 2026', lastEvent: 'created', streak: 0, missedDays: 0 },
-]
-
 function SubNav({ sub, setSub }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const activeItem = SKILLHUB_NAV.find(item => item.key === sub) || SKILLHUB_NAV[0]
+
   return (
-    <div style={{ display: 'flex', gap: 4, background: 'var(--white)', borderRadius: 12, padding: 6, border: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap' }}>
+    <div className="responsive-pill-nav responsive-pill-nav-menu" style={{ display: 'flex', gap: 4, background: 'var(--white)', borderRadius: 12, padding: 6, border: '1px solid var(--border)', marginBottom: 24, flexWrap: 'wrap' }}>
+      <div className="responsive-pill-nav-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>{activeItem.icon}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {activeItem.label}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="responsive-pill-nav-toggle"
+          onClick={() => setIsOpen(open => !open)}
+          aria-label="Toggle Skill Hub navigation"
+          aria-expanded={isOpen}
+        >
+          ☰
+        </button>
+      </div>
+
+      <div className={`responsive-pill-nav-list${isOpen ? ' is-open' : ''}`}>
       {SKILLHUB_NAV.map(item => (
-        <button key={item.key} onClick={() => setSub(item.key)} style={{
+        <button key={item.key} onClick={() => {
+          setSub(item.key)
+          setIsOpen(false)
+        }} style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '8px 16px', borderRadius: 8, border: 'none',
           background: sub === item.key ? 'var(--primary)' : 'transparent',
@@ -45,6 +57,7 @@ function SubNav({ sub, setSub }) {
           {item.icon} {item.label}
         </button>
       ))}
+      </div>
     </div>
   )
 }
@@ -68,7 +81,7 @@ function VerifyAllSkillsPanel({ skills, statusMeta, skillStageMeta, trustCreditM
   ]
 
   return (
-    <div style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '20px', height: 'calc(100vh - 310px)', overflowY: 'auto', scrollbarWidth: 'thin' }}>
+    <div className="responsive-scroll-panel" style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '20px', height: 'calc(100vh - 310px)', overflowY: 'auto', scrollbarWidth: 'thin' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
         <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>
           All Skills
@@ -142,13 +155,62 @@ function VerifyAllSkillsPanel({ skills, statusMeta, skillStageMeta, trustCreditM
 
 export default function SkillHub() {
   const navigate = useNavigate()
+  const sessionTokenRef = useRef(getStudentSessionToken())
+  const didHydrateRef = useRef(false)
   const [sub, setSub] = useState('myskills')
   const [skillFilter, setSkillFilter] = useState('all')
   const [assessmentFilter, setAssessmentFilter] = useState('all')
-  const [skills, setSkills] = useState(INITIAL_SKILLS)
+  const [skills, setSkills] = useState(() => buildDemoSkillHubSkills())
   const [showAddSkill, setShowAddSkill] = useState(false)
   const [newSkill, setNewSkill] = useState({ name: '', category: 'Frontend', level: '65' })
-const verifiedSkills = skills.filter(skill => skill.verified)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadSkillHub() {
+      if (!sessionTokenRef.current) {
+        didHydrateRef.current = true
+        return
+      }
+
+      try {
+        const result = await fetchStudentSkillHub(sessionTokenRef.current)
+
+        if (!cancelled && Array.isArray(result.skillHub?.skills)) {
+          setSkills(result.skillHub.skills)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          sessionTokenRef.current = ''
+          setSkills(buildDemoSkillHubSkills())
+        }
+      } finally {
+        if (!cancelled) {
+          didHydrateRef.current = true
+        }
+      }
+    }
+
+    loadSkillHub()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!sessionTokenRef.current || !didHydrateRef.current) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      saveStudentSkillHub(sessionTokenRef.current, { skills }).catch(() => {})
+    }, 350)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [skills])
+
+  const verifiedSkills = skills.filter(skill => skill.verified)
   const unverifiedSkills = skills.filter(skill => !skill.verified)
   const renewalSkills = verifiedSkills.filter(s => s.renewalStatus === 'due' || s.renewalStatus === 'expired')
   const dueRenewSkills = renewalSkills.filter(s => s.renewalStatus === 'due')
@@ -224,7 +286,7 @@ const verifiedSkills = skills.filter(skill => skill.verified)
     { key: 'beginner', label: 'Beginner', count: beginnerCount, bg: '#F0FDF4', color: '#15803D' },
   ]
 
-const addSkill = () => {
+  const addSkill = () => {
     const name = newSkill.name.trim()
     if (!name) return
     const exists = skills.some(skill => skill.name.toLowerCase() === name.toLowerCase())
@@ -232,11 +294,13 @@ const addSkill = () => {
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
     const level = Number(newSkill.level) || 65
     const trustGain = level >= 80 ? 6 : level >= 65 ? 5 : 4
+    const stage = level >= 80 ? 'Pro' : level >= 60 ? 'Intermediate' : 'Beginner'
     setSkills(prev => [
       ...prev,
       {
         name,
         level,
+        stage,
         category: newSkill.category,
         verified: false,
         renewalStatus: 'unverified',
@@ -504,8 +568,8 @@ const addSkill = () => {
 
       {sub === 'myskills' && (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(280px, 1fr))', gap: 14, marginBottom: 16 }}>
-            <div style={{ ...card, height: 770, overflowY: 'auto', scrollbarWidth: 'thin', scrollBehavior: 'smooth' }}>
+          <div className="responsive-skillhub-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(280px, 1fr))', gap: 14, marginBottom: 16 }}>
+            <div className="responsive-scroll-panel" style={{ ...card, height: 770, overflowY: 'auto', scrollbarWidth: 'thin', scrollBehavior: 'smooth' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
                 <div>
                   <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>All Skills</div>
@@ -529,7 +593,7 @@ const addSkill = () => {
                 </button>
               </div>
               {showAddSkill && (
-                <div style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px', marginBottom: 14, display: 'grid', gridTemplateColumns: '1.4fr 1fr 110px auto', gap: 8, alignItems: 'end' }}>
+                <div className="responsive-inline-form" style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px', marginBottom: 14, display: 'grid', gridTemplateColumns: '1.4fr 1fr 110px auto', gap: 8, alignItems: 'end' }}>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Skill Name
                     <input
@@ -606,7 +670,7 @@ const addSkill = () => {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
                 {filteredSkills.map(skill => (
-                  <div key={skill.name} style={{
+                  <div key={skill.name} className="responsive-stack" style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -618,8 +682,8 @@ const addSkill = () => {
                     {(() => {
                       const stageMeta = skillStageMeta(skill)
                       return (
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--dark)' }}>{skill.name}</span>
                         <span style={{ fontSize: 11, fontWeight: 700, background: statusMeta(skill).bg, color: statusMeta(skill).color, padding: '2px 8px', borderRadius: 100 }}>
                           {statusMeta(skill).label}
@@ -637,7 +701,7 @@ const addSkill = () => {
                         {skill.verified ? statusMeta(skill).detail : 'Complete a skill assessment to unlock verified level badges.'}
                       </div>
                       {skill.verified && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <span style={{
                             fontSize: 11,
                             fontWeight: 700,
@@ -660,7 +724,7 @@ const addSkill = () => {
                     </div>
                       )
                     })()}
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div className="responsive-skill-meta" style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>{skill.level}%</div>
                       <div style={{ fontSize: 11, color: trustCreditMeta(skill).color, fontWeight: 700 }}>
                         {skill.verified ? (skill.renewalStatus === 'valid' ? 'Profile Ready' : trustCreditMeta(skill).text) : 'Level updates via assessment'}
@@ -671,7 +735,7 @@ const addSkill = () => {
               </div>
             </div>
 
-            <div style={{ ...card, height: 770, overflowY: 'auto', scrollbarWidth: 'thin', scrollBehavior: 'smooth' }}>
+            <div className="responsive-scroll-panel" style={{ ...card, height: 770, overflowY: 'auto', scrollbarWidth: 'thin', scrollBehavior: 'smooth' }}>
               <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
                 Skill Log
               </div>
@@ -727,8 +791,8 @@ const addSkill = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div style={{ ...card, height: 'calc(100vh - 340px)', overflowY: 'auto', scrollbarWidth: 'thin', scrollBehavior: 'smooth' }}>
+          <div className="responsive-split-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="responsive-scroll-panel" style={{ ...card, height: 'calc(100vh - 340px)', overflowY: 'auto', scrollbarWidth: 'thin', scrollBehavior: 'smooth' }}>
               <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
                 Verified Skills
               </div>
@@ -804,7 +868,7 @@ const addSkill = () => {
               </div>
             </div>
 
-            <div style={{ ...card, height: 'calc(100vh - 340px)', overflowY: 'auto', scrollbarWidth: 'thin', scrollBehavior: 'smooth' }}>
+            <div className="responsive-scroll-panel" style={{ ...card, height: 'calc(100vh - 340px)', overflowY: 'auto', scrollbarWidth: 'thin', scrollBehavior: 'smooth' }}>
               <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
                 Upgrade Criteria
               </div>
@@ -880,7 +944,7 @@ const addSkill = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="responsive-split-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
             {/* Column 1 — All Skills with filter */}
             <VerifyAllSkillsPanel
@@ -891,7 +955,7 @@ const addSkill = () => {
             />
 
             {/* Column 2 — Verification Queue */}
-            <div style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '20px', height: 'calc(100vh - 310px)', overflowY: 'auto', scrollbarWidth: 'thin' }}>
+            <div className="responsive-scroll-panel" style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '20px', height: 'calc(100vh - 310px)', overflowY: 'auto', scrollbarWidth: 'thin' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>
                   Action Required
@@ -919,8 +983,8 @@ const addSkill = () => {
                       : `+${skill.trustGain} Trust on renew`
 
                   return (
-                    <div key={skill.name} style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px 14px', border: `1px solid ${isExpired ? '#FECACA' : 'var(--border)'}` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                    <div key={skill.name} style={{ background: 'var(--bg)', borderRadius: 10, padding: '14px 16px', border: `1px solid ${isExpired ? '#FECACA' : 'var(--border)'}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
                             <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>{skill.name}</span>
@@ -943,19 +1007,29 @@ const addSkill = () => {
                             {trustLine}
                           </div>
                         </div>
-                        <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--dark)', marginBottom: 6 }}>{skill.level}%</div>
+                        <div style={{ flexShrink: 0, minWidth: 132, textAlign: 'right' }}>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--dark)', marginBottom: 8 }}>{skill.level}%</div>
                           <button
                             onClick={() => openVerificationTask(skill)}
                             className="btn-primary"
-                            style={{ padding: '7px 12px', fontSize: 12 }}
+                            style={{ padding: '8px 12px', fontSize: 12, justifyContent: 'center', width: '100%' }}
                           >
                             {actionLabel}
                           </button>
-                          <div style={{ marginTop: 8, maxWidth: 200, fontSize: 10.5, fontWeight: 700, color: '#B91C1C', lineHeight: 1.45 }}>
-                            {ACTION_WARNING}
-                          </div>
                         </div>
+                      </div>
+                      <div style={{
+                        marginTop: 12,
+                        padding: '10px 12px',
+                        borderRadius: 8,
+                        background: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#B91C1C',
+                        lineHeight: 1.5,
+                      }}>
+                        {ACTION_WARNING}
                       </div>
                     </div>
                   )

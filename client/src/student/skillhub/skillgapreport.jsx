@@ -85,7 +85,7 @@ export default function SkillGapReport() {
       </div>
 
       {/* Three-stat row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+      <div className="responsive-card-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
         {[
           { label: 'Profile Match Score', value: `${overallMatch}%`, sub: 'vs. top GIG requirements', color: overallMatch >= 70 ? '#065F46' : overallMatch >= 50 ? '#92400E' : '#991B1B', bg: overallMatch >= 70 ? '#D1FAE5' : overallMatch >= 50 ? '#FEF3C7' : '#FEE2E2' },
           { label: 'GIGs You Can Unlock', value: totalGigsUnlockable, sub: 'by closing all skill gaps', color: '#1D4ED8', bg: '#DBEAFE' },
@@ -100,10 +100,10 @@ export default function SkillGapReport() {
       </div>
 
       {/* Two-column main layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 16 }}>
+      <div className="responsive-split-two" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 16 }}>
 
         {/* Left — Gap List */}
-        <div style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '18px', height: 'calc(100vh - 420px)', overflowY: 'auto', scrollbarWidth: 'thin' }}>
+        <div className="responsive-scroll-panel" style={{ background: 'var(--white)', borderRadius: 14, border: '1px solid var(--border)', padding: '18px', height: 'calc(100vh - 420px)', overflowY: 'auto', scrollbarWidth: 'thin' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>
               Skills to Close
@@ -115,7 +115,7 @@ export default function SkillGapReport() {
           </div>
 
           {/* Gap filters */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
             {[
               { key: 'all', label: 'All Gaps', count: GAP_DATA.length, bg: 'var(--bg)', color: 'var(--dark)' },
               { key: 'High', label: 'High', count: highCount, bg: '#FEE2E2', color: '#991B1B' },

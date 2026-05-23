@@ -1,29 +1,29 @@
 const coreFeatures = [
   {
-    icon: '🎯',
-    title: 'Smart Skill Matching',
-    desc: 'Our algorithm matches students to opportunities based on verified skills, not college rank or resume brand names.',
+    icon: '💼',
+    title: 'Student GIG Center',
+    desc: 'Students can browse gigs, receive direct company invites, track applied roles, manage active work, and save opportunities from one dashboard.',
     color: '#EEF2FF',
     accent: '#4F46E5',
   },
   {
-    icon: '📂',
-    title: 'Portfolio Showcase',
-    desc: 'Build a living portfolio of real projects. Each completed gig adds to your proof-of-work — visible to every hiring MSME.',
+    icon: '🎯',
+    title: 'Skill Hub + Daily Tasks',
+    desc: 'Verified skills, renewals, upgrades, daily retention tasks, and skill-gap reports help students keep proof-of-skill fresh and visible.',
     color: '#F0FDF4',
     accent: '#10B981',
   },
   {
-    icon: '🏢',
-    title: 'MSME Project Board',
-    desc: 'Local businesses post micro-projects and part-time gigs. Students apply, deliver, and earn — all within the platform.',
+    icon: '🔎',
+    title: 'MSME Talent Search',
+    desc: 'Companies can search students by TrustScore, skills, and fit, then review profile details before sending interview tasks or shortlisting.',
     color: '#FFF7ED',
     accent: '#F97316',
   },
   {
-    icon: '🔔',
-    title: 'Instant Notifications',
-    desc: 'Get alerted the moment a matching opportunity drops — no more refreshing job boards or missing deadlines.',
+    icon: '📁',
+    title: 'Workspace + Payments',
+    desc: 'From active project tracking to company payouts and student earnings, SkillBridge keeps execution, delivery, and payment in one flow.',
     color: '#F0F9FF',
     accent: '#0EA5E9',
   },
@@ -34,21 +34,21 @@ const wowFeatures = [
     icon: '🏆',
     title: 'TrustScore™',
     tag: 'WOW Feature',
-    desc: 'An AI-powered score (0–100) built from verified task completions, peer ratings, and skill assessments — completely independent of college name or CGPA.',
+    desc: 'A visible credibility layer that grows through verified skills, project work, daily consistency, and task behavior instead of pedigree-based filtering.',
     highlight: true,
   },
   {
     icon: '⚡',
-    title: 'SkillProof Challenges',
+    title: 'AI-Proctored Skill Tasks',
     tag: 'WOW Feature',
-    desc: 'Prove a skill in under 10 minutes with a mini real-world task, graded instantly by AI. No resume needed — your output speaks.',
+    desc: 'Interview tasks, daily challenges, and skill retention checks are built around real output and integrity-aware signals, not resume claims alone.',
     highlight: true,
   },
   {
-    icon: '🤖',
-    title: 'AI Career Coach',
+    icon: '🤝',
+    title: 'Two-Sided Hiring System',
     tag: 'WOW Feature',
-    desc: 'A conversational AI that reviews your profile, suggests skill gaps to fill, and tells you exactly which opportunities you are best positioned for.',
+    desc: 'Students get profile, network, gig, trust, and earning flows while companies get business setup, gig management, workspace, and payment control.',
     highlight: true,
   },
 ]
@@ -125,21 +125,21 @@ function WowCard({ icon, title, tag, desc }) {
 
 export default function Features() {
   return (
-    <section id="features" style={{ padding: '100px 0', background: 'var(--bg)' }}>
+    <section id="features" className="landing-section" style={{ padding: '100px 0', background: 'var(--bg)' }}>
       <div className="container">
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '64px' }}>
+        <div className="landing-section-header" style={{ textAlign: 'center', marginBottom: '64px' }}>
           <div className="section-label" style={{ marginBottom: 12 }}>What we offer</div>
           <h2 className="section-title" style={{ marginBottom: 16 }}>
-            Built for real opportunity.<br />Not for elite gatekeeping.
+            Built around the product<br />students and companies actually use.
           </h2>
           <p className="section-subtitle" style={{ margin: '0 auto', textAlign: 'center' }}>
-            Every feature is designed to level the field — giving Tier-2/3 students the same shot as anyone else.
+            From Skill Hub and TrustScore to GIG Management, Talent Search, Workspace, and Payments, the platform now mirrors the full hiring journey.
           </p>
         </div>
 
         {/* Core features grid */}
-        <div style={{
+        <div className="landing-features-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
           gap: '20px',
@@ -159,7 +159,7 @@ export default function Features() {
             ✨ Standout Features — built to impress
           </div>
         </div>
-        <div style={{
+        <div className="landing-wow-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '20px',

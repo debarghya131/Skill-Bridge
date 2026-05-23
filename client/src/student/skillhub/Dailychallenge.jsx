@@ -161,10 +161,10 @@ export default function DailyChallenge() {
       </div>
 
       {/* Two-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="responsive-split-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
         {/* Column 1 — Retention Tasks */}
-        <div style={col}>
+        <div className="responsive-scroll-panel" style={col}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>
               🔒 Retention Tasks
@@ -192,7 +192,7 @@ export default function DailyChallenge() {
                   border: `1px solid ${done ? '#BBF7D0' : warning?.level === 'critical' ? '#FECACA' : warning?.level === 'warning' ? '#FDE68A' : 'var(--border)'}`,
                   opacity: done ? 0.78 : 1,
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <div className="responsive-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
                         <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>{skill.name}</span>
@@ -225,7 +225,7 @@ export default function DailyChallenge() {
                       )}
                     </div>
 
-                    <div style={{ flexShrink: 0, maxWidth: 220 }}>
+                    <div className="responsive-daily-action" style={{ flexShrink: 0, maxWidth: 220 }}>
                       {done ? (
                         <span style={{ fontSize: 11, fontWeight: 700, background: '#D1FAE5', color: '#065F46', padding: '5px 11px', borderRadius: 100 }}>
                           ✓ Done
@@ -270,7 +270,7 @@ export default function DailyChallenge() {
         </div>
 
         {/* Column 2 — Daily Challenges */}
-        <div style={col}>
+        <div className="responsive-scroll-panel" style={col}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)' }}>
               ⚡ Daily Challenges
@@ -292,7 +292,7 @@ export default function DailyChallenge() {
                 border: `1px solid ${ch.done ? '#BBF7D0' : 'var(--border)'}`,
                 opacity: ch.done ? 0.78 : 1,
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <div className="responsive-stack" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dark)', marginBottom: 6 }}>
                       {typeIcon[ch.type]} {ch.title}
@@ -314,7 +314,7 @@ export default function DailyChallenge() {
                     </div>
                   </div>
 
-                  <div style={{ flexShrink: 0, maxWidth: 220 }}>
+                  <div className="responsive-daily-action" style={{ flexShrink: 0, maxWidth: 220 }}>
                     {ch.done ? (
                       <span style={{ fontSize: 11, fontWeight: 700, background: '#D1FAE5', color: '#065F46', padding: '5px 11px', borderRadius: 100 }}>
                         ✓ Done

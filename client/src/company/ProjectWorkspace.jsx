@@ -1,49 +1,5 @@
-import { useMemo, useState } from 'react'
-
-const PROJECTS = [
-  {
-    id: 'p1',
-    title: 'Social Media Content Role',
-    company: 'Urban Threads',
-    status: 'In Progress',
-    deadline: 'Apr 30, 2026',
-    progress: 62,
-    team: ['Aman V', 'Riya S'],
-    tasks: [
-      { name: 'Submit content calendar draft', owner: 'Aman V', state: 'Done' },
-      { name: 'Design 6 Instagram creatives', owner: 'Riya S', state: 'In Review' },
-      { name: 'Finalize launch captions', owner: 'Aman V', state: 'Todo' },
-    ],
-  },
-  {
-    id: 'p2',
-    title: 'React Dashboard Revamp',
-    company: 'Gupta Electronics',
-    status: 'Review',
-    deadline: 'May 6, 2026',
-    progress: 84,
-    team: ['Priya S', 'Kunal R'],
-    tasks: [
-      { name: 'Migrate analytics widgets', owner: 'Kunal R', state: 'Done' },
-      { name: 'QA responsive layouts', owner: 'Priya S', state: 'In Review' },
-      { name: 'Push final production build', owner: 'Kunal R', state: 'Todo' },
-    ],
-  },
-  {
-    id: 'p3',
-    title: 'Node.js API Task',
-    company: 'CodeNest Solutions',
-    status: 'Planning',
-    deadline: 'May 12, 2026',
-    progress: 28,
-    team: ['Rohit K'],
-    tasks: [
-      { name: 'Define API contracts', owner: 'Rohit K', state: 'In Review' },
-      { name: 'Create auth middleware', owner: 'Rohit K', state: 'Todo' },
-      { name: 'Write Postman collection', owner: 'Rohit K', state: 'Todo' },
-    ],
-  },
-]
+import { useEffect, useMemo, useState } from 'react'
+import { buildDefaultCompanyWorkspaceState, mergeCompanyWorkspaceState } from './companyWorkspaceDemoData'
 
 const STATUS_META = {
   Planning: { bg: '#E0E7FF', color: '#3730A3' },
@@ -58,18 +14,31 @@ const TASK_META = {
   Done: { bg: '#D1FAE5', color: '#065F46' },
 }
 
-export default function ProjectWorkspace() {
-  const [selectedProjectId, setSelectedProjectId] = useState(PROJECTS[0].id)
-  const [statusFilter, setStatusFilter] = useState('All')
+export default function ProjectWorkspace({ projectWorkspaceState, onSaveState }) {
+  const [localState, setLocalState] = useState(() => mergeCompanyWorkspaceState(projectWorkspaceState || buildDefaultCompanyWorkspaceState()))
+
+  useEffect(() => {
+    setLocalState(mergeCompanyWorkspaceState(projectWorkspaceState || buildDefaultCompanyWorkspaceState()))
+  }, [projectWorkspaceState])
+
+  const updateWorkspaceState = (updater) => {
+    setLocalState(current => {
+      const nextState = typeof updater === 'function' ? updater(current) : updater
+      const mergedState = mergeCompanyWorkspaceState(nextState)
+      onSaveState(mergedState)
+      return mergedState
+    })
+  }
 
   const statusOptions = ['All', 'Planning', 'In Progress', 'Review']
 
   const filteredProjects = useMemo(
-    () => PROJECTS.filter(project => statusFilter === 'All' || project.status === statusFilter),
-    [statusFilter]
+    () => localState.projects.filter(project => localState.statusFilter === 'All' || project.status === localState.statusFilter),
+    [localState.projects, localState.statusFilter]
   )
 
-  const selectedProject = filteredProjects.find(project => project.id === selectedProjectId) || filteredProjects[0] || null
+  const selectedProject = filteredProjects.find(project => project.id === localState.selectedProjectId) || filteredProjects[0] || null
+  const allTasks = localState.projects.flatMap(project => project.tasks)
 
   return (
     <div>
@@ -89,11 +58,11 @@ export default function ProjectWorkspace() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+      <div className="responsive-card-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
         {[
-          { label: 'Active Projects', value: PROJECTS.length, icon: '🗂️' },
-          { label: 'In Progress Tasks', value: PROJECTS.flatMap(project => project.tasks).filter(task => task.state === 'In Review').length, icon: '⚡' },
-          { label: 'Completed Tasks', value: PROJECTS.flatMap(project => project.tasks).filter(task => task.state === 'Done').length, icon: '✅' },
+          { label: 'Active Projects', value: localState.projects.length, icon: '🗂️' },
+          { label: 'In Progress Tasks', value: allTasks.filter(task => task.state === 'In Review').length, icon: '⚡' },
+          { label: 'Completed Tasks', value: allTasks.filter(task => task.state === 'Done').length, icon: '✅' },
         ].map(stat => (
           <div key={stat.label} style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
             <div style={{ fontSize: 18, marginBottom: 6 }}>{stat.icon}</div>
@@ -103,7 +72,7 @@ export default function ProjectWorkspace() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 14 }}>
+      <div className="responsive-split-two" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 14 }}>
         <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 10 }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>Projects Board</div>
@@ -111,7 +80,7 @@ export default function ProjectWorkspace() {
               {statusOptions.map(option => (
                 <button
                   key={option}
-                  onClick={() => setStatusFilter(option)}
+                  onClick={() => updateWorkspaceState(current => ({ ...current, statusFilter: option }))}
                   style={{
                     border: 'none',
                     borderRadius: 100,
@@ -119,8 +88,8 @@ export default function ProjectWorkspace() {
                     fontWeight: 700,
                     padding: '4px 10px',
                     cursor: 'pointer',
-                    background: statusFilter === option ? 'var(--accent)' : 'var(--bg)',
-                    color: statusFilter === option ? 'white' : 'var(--muted)',
+                    background: localState.statusFilter === option ? 'var(--accent)' : 'var(--bg)',
+                    color: localState.statusFilter === option ? 'white' : 'var(--muted)',
                   }}
                 >
                   {option}
@@ -136,7 +105,7 @@ export default function ProjectWorkspace() {
               return (
                 <button
                   key={project.id}
-                  onClick={() => setSelectedProjectId(project.id)}
+                  onClick={() => updateWorkspaceState(current => ({ ...current, selectedProjectId: project.id }))}
                   style={{
                     border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
                     borderRadius: 10,
