@@ -104,6 +104,7 @@ const studentSchema = new mongoose.Schema({
   gigState: { type: gigStateSchema, default: undefined },
   networkState: { type: mongoose.Schema.Types.Mixed, default: undefined },
   earningState: { type: mongoose.Schema.Types.Mixed, default: undefined },
+  dailySectionUsage: { type: mongoose.Schema.Types.Mixed, default: undefined },
   sessions: { type: [sessionSchema], default: [] },
 }, {
   timestamps: true,

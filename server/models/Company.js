@@ -27,6 +27,7 @@ const companySchema = new mongoose.Schema({
   gigManagementState: { type: mongoose.Schema.Types.Mixed, default: undefined },
   projectWorkspaceState: { type: mongoose.Schema.Types.Mixed, default: undefined },
   paymentState: { type: mongoose.Schema.Types.Mixed, default: undefined },
+  dailySectionUsage: { type: mongoose.Schema.Types.Mixed, default: undefined },
   sessions: { type: [sessionSchema], default: [] },
 }, {
   timestamps: true,

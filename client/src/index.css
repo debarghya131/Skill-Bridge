@@ -342,6 +342,52 @@ img, video { max-width: 100%; }
     padding-left: 18px !important;
     padding-right: 18px !important;
   }
+  .taskpage-shell {
+    padding: 24px 16px !important;
+  }
+  .taskpage-back-button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .taskpage-hero {
+    padding: 22px 20px !important;
+  }
+  .taskpage-flow-item,
+  .taskpage-question-item,
+  .company-task-row,
+  .company-task-row-main {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .company-task-header {
+    padding: 18px 20px !important;
+    gap: 14px !important;
+  }
+  .company-task-stages {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 6px !important;
+  }
+  .company-task-stages button {
+    width: 100%;
+    justify-content: center;
+  }
+  .company-task-card,
+  .company-task-submission-panel,
+  .company-task-feedback-card {
+    padding: 18px 16px !important;
+  }
+  .company-task-points {
+    margin-left: 0 !important;
+    align-self: flex-start;
+  }
+  .company-task-submission-panel .btn-primary {
+    width: 100%;
+    align-self: stretch !important;
+    justify-content: center;
+  }
   .btn-primary,
   .btn-secondary,
   .btn-accent {
@@ -477,6 +523,56 @@ img, video { max-width: 100%; }
   }
   .landing-step-card > div:first-child + div {
     padding-bottom: 22px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .taskpage-shell {
+    padding: 20px 12px !important;
+  }
+  .taskpage-container {
+    max-width: 100% !important;
+  }
+  .taskpage-back-button {
+    width: 100%;
+    justify-content: flex-start;
+    margin-bottom: 14px !important;
+  }
+  .taskpage-hero {
+    padding: 18px 16px !important;
+    margin-bottom: 16px !important;
+  }
+  .taskpage-hero > div:first-child > div:nth-child(2) {
+    font-size: 24px !important;
+    line-height: 1.25;
+  }
+  .company-task-header {
+    padding: 16px !important;
+    margin-bottom: 16px !important;
+  }
+  .company-task-header > div:last-child {
+    width: 100%;
+    white-space: normal !important;
+  }
+  .company-task-stages {
+    padding: 6px !important;
+    margin-bottom: 16px !important;
+  }
+  .company-task-stages button {
+    min-height: 48px;
+    font-size: 13px !important;
+  }
+  .company-task-card,
+  .company-task-submission-panel,
+  .company-task-feedback-card {
+    padding: 16px 14px !important;
+  }
+  .responsive-modal-shell {
+    padding: 12px !important;
+  }
+  .responsive-modal-card {
+    border-radius: 16px !important;
+    max-height: calc(100vh - 24px) !important;
   }
 }
 

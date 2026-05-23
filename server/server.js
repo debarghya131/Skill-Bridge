@@ -1,7 +1,6 @@
-const fs = require('fs')
 const http = require('http')
-const path = require('path')
-const { connectToDatabase, getDatabaseStatus } = require('./config/db')
+const { connectToDatabase, disconnectFromDatabase, getDatabaseStatus } = require('./config/db')
+const { getEnvConfig } = require('./config/env')
 const {
   getCurrentCompany,
   getCurrentCompanyGigManagementState,
@@ -41,48 +40,58 @@ const {
   reviewCompanyTaskSubmission,
   submitStudentCompanyInterviewTask,
 } = require('./controllers/taskBridgeController')
+const { createRateLimiter } = require('./utils/rateLimit')
+const { createRequestId, serializeError, writeLog } = require('./utils/logger')
 const { getBearerToken, readJsonBody } = require('./utils/request')
+const { getSessionTtlMs, resolveSessionSubject } = require('./utils/session')
+const Student = require('./models/Student')
+const Company = require('./models/Company')
 
-function loadEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) {
-    return
+const env = getEnvConfig()
+const port = env.port
+const mongoUrl = env.mongoUrl
+const rateLimiter = createRateLimiter({
+  windowMs: env.rateLimitWindowMs,
+  maxRequests: env.rateLimitMaxRequests,
+  authMaxRequests: env.authRateLimitMaxRequests,
+  dailyUserMaxRequests: env.dailyUserRateLimitMaxRequests,
+})
+
+function resolveAllowedOrigin(origin) {
+  if (env.corsOrigins.includes('*')) {
+    return '*'
   }
 
-  const content = fs.readFileSync(filePath, 'utf8')
-
-  for (const rawLine of content.split(/\r?\n/)) {
-    const line = rawLine.trim()
-
-    if (!line || line.startsWith('#')) {
-      continue
-    }
-
-    const separatorIndex = line.indexOf('=')
-
-    if (separatorIndex === -1) {
-      continue
-    }
-
-    const key = line.slice(0, separatorIndex).trim()
-    const value = line.slice(separatorIndex + 1).trim()
-
-    if (key && process.env[key] === undefined) {
-      process.env[key] = value
-    }
+  if (origin && env.corsOrigins.includes(origin)) {
+    return origin
   }
+
+  return ''
 }
 
-loadEnvFile(path.join(__dirname, '.env'))
+function buildCommonHeaders(res) {
+  const allowedOrigin = resolveAllowedOrigin(res.requestOrigin)
 
-const port = Number(process.env.PORT) || 5000
-const mongoUrl = process.env.MONGO_URL
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin || env.corsOrigins[0] || '*',
+    'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Request-Id',
+    'Cache-Control': 'no-store',
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Resource-Policy': 'same-origin',
+    'Referrer-Policy': 'no-referrer',
+    'Vary': 'Origin',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-Request-Id': res.requestId,
+  }
+}
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    ...buildCommonHeaders(res),
   })
   res.end(JSON.stringify(payload))
 }
@@ -170,8 +179,8 @@ async function handleCompanyApi(req, res, pathname) {
     const taskReviewMatch = pathname.match(/^\/api\/company\/tasks\/submissions\/([a-f0-9]+)$/i)
     if (req.method === 'PATCH' && taskReviewMatch) {
       const payload = await readJsonBody(req)
-      const taskSubmission = await reviewCompanyTaskSubmission(getBearerToken(req), taskReviewMatch[1], payload)
-      sendJson(res, 200, { taskSubmission })
+      const result = await reviewCompanyTaskSubmission(getBearerToken(req), taskReviewMatch[1], payload)
+      sendJson(res, 200, result)
       return true
     }
 
@@ -184,6 +193,7 @@ async function handleCompanyApi(req, res, pathname) {
     sendJson(res, error.statusCode || 500, {
       status: 'error',
       message: error.message || 'Something went wrong',
+      requestId: res.requestId,
     })
     return true
   }
@@ -328,6 +338,7 @@ async function handleStudentApi(req, res, pathname) {
     sendJson(res, error.statusCode || 500, {
       status: 'error',
       message: error.message || 'Something went wrong',
+      requestId: res.requestId,
     })
     return true
   }
@@ -336,16 +347,60 @@ async function handleStudentApi(req, res, pathname) {
 }
 
 const server = http.createServer(async (req, res) => {
+  const startTime = Date.now()
+  req.requestId = createRequestId()
+  res.requestId = req.requestId
+  res.requestOrigin = req.headers.origin || ''
   const { pathname } = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
 
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  res.on('finish', () => {
+    writeLog('info', 'request.completed', {
+      requestId: req.requestId,
+      method: req.method,
+      pathname,
+      statusCode: res.statusCode,
+      durationMs: Date.now() - startTime,
     })
+  })
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, buildCommonHeaders(res))
     res.end()
     return
+  }
+
+  const rateLimitResult = rateLimiter.check(req, pathname)
+
+  if (rateLimitResult.limited) {
+    res.setHeader('Retry-After', String(Math.ceil(rateLimitResult.retryAfterMs / 1000)))
+    sendJson(res, 429, {
+      status: 'error',
+      message: 'Too many requests. Please slow down and try again shortly.',
+      requestId: req.requestId,
+    })
+    return
+  }
+
+  const bearerToken = getBearerToken(req)
+  const sessionSubject = await resolveSessionSubject({
+    token: bearerToken,
+    studentModel: Student,
+    companyModel: Company,
+    sessionTtlMs: getSessionTtlMs(env.sessionTtlDays),
+  })
+
+  if (sessionSubject) {
+    const dailyUserLimitResult = rateLimiter.consumeDailyUser(`${sessionSubject.type}:${sessionSubject.id}`)
+
+    if (dailyUserLimitResult.limited) {
+      res.setHeader('Retry-After', String(Math.ceil(dailyUserLimitResult.retryAfterMs / 1000)))
+      sendJson(res, 429, {
+        status: 'error',
+        message: 'Daily account request limit reached. Please try again tomorrow.',
+        requestId: req.requestId,
+      })
+      return
+    }
   }
 
   if (await handleStudentApi(req, res, pathname)) {
@@ -372,6 +427,29 @@ const server = http.createServer(async (req, res) => {
       database: getDatabaseStatus(),
       port,
       timestamp: new Date().toISOString(),
+      requestId: req.requestId,
+      uptimeSeconds: Math.round(process.uptime()),
+    })
+    return
+  }
+
+  if (req.method === 'GET' && pathname === '/live') {
+    sendJson(res, 200, {
+      status: 'ok',
+      requestId: req.requestId,
+      uptimeSeconds: Math.round(process.uptime()),
+    })
+    return
+  }
+
+  if (req.method === 'GET' && pathname === '/ready') {
+    const databaseStatus = getDatabaseStatus()
+    const isReady = databaseStatus === 'connected'
+
+    sendJson(res, isReady ? 200 : 503, {
+      status: isReady ? 'ready' : 'not_ready',
+      database: databaseStatus,
+      requestId: req.requestId,
     })
     return
   }
@@ -379,15 +457,21 @@ const server = http.createServer(async (req, res) => {
   sendJson(res, 404, {
     status: 'error',
     message: 'Route not found',
+    requestId: req.requestId,
   })
 })
 
 server.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
-    console.error(`Port ${port} is already in use. Stop the existing process or change PORT in server/.env.`)
+    writeLog('error', 'server.port_in_use', {
+      port,
+      error: serializeError(error),
+    })
   } else {
-    console.error('HTTP server failed to start')
-    console.error(error.message)
+    writeLog('error', 'server.start_failed', {
+      port,
+      error: serializeError(error),
+    })
   }
 
   process.exit(1)
@@ -396,16 +480,63 @@ server.on('error', (error) => {
 async function startServer() {
   try {
     await connectToDatabase(mongoUrl)
-    console.log('MongoDB connected successfully')
+    writeLog('info', 'database.connected', {
+      database: getDatabaseStatus(),
+    })
 
     server.listen(port, () => {
-      console.log(`SkillBridge backend running on http://localhost:${port}`)
+      writeLog('info', 'server.started', {
+        port,
+        nodeEnv: env.nodeEnv,
+        corsOrigins: env.corsOrigins,
+      })
     })
   } catch (error) {
-    console.error('Failed to connect to MongoDB')
-    console.error(error.message)
+    writeLog('error', 'database.connection_failed', {
+      error: serializeError(error),
+    })
     process.exit(1)
   }
 }
+
+async function shutdown(signal) {
+  writeLog('warn', 'server.shutdown_requested', { signal })
+
+  server.close(async closeError => {
+    if (closeError) {
+      writeLog('error', 'server.shutdown_close_failed', {
+        signal,
+        error: serializeError(closeError),
+      })
+      process.exit(1)
+      return
+    }
+
+    try {
+      await disconnectFromDatabase()
+      writeLog('info', 'server.shutdown_complete', { signal })
+      process.exit(0)
+    } catch (error) {
+      writeLog('error', 'server.shutdown_db_disconnect_failed', {
+        signal,
+        error: serializeError(error),
+      })
+      process.exit(1)
+    }
+  })
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'))
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('uncaughtException', error => {
+  writeLog('error', 'process.uncaught_exception', {
+    error: serializeError(error),
+  })
+})
+process.on('unhandledRejection', error => {
+  writeLog('error', 'process.unhandled_rejection', {
+    error: serializeError(error),
+  })
+})
 
 startServer()

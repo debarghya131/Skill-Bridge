@@ -23,7 +23,16 @@ async function connectToDatabase(mongoUrl) {
   return mongoose.connection
 }
 
+async function disconnectFromDatabase() {
+  if (mongoose.connection.readyState === 0) {
+    return
+  }
+
+  await mongoose.disconnect()
+}
+
 module.exports = {
   connectToDatabase,
+  disconnectFromDatabase,
   getDatabaseStatus,
 }

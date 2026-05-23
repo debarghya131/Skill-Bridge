@@ -6,7 +6,9 @@ function readJsonBody(req) {
       body += chunk
 
       if (body.length > 1_000_000) {
-        reject(new Error('Request body is too large'))
+        const error = new Error('Request body is too large')
+        error.statusCode = 413
+        reject(error)
         req.destroy()
       }
     })
@@ -20,7 +22,9 @@ function readJsonBody(req) {
       try {
         resolve(JSON.parse(body))
       } catch (error) {
-        reject(new Error('Invalid JSON body'))
+        const parseError = new Error('Invalid JSON body')
+        parseError.statusCode = 400
+        reject(parseError)
       }
     })
 

@@ -10,6 +10,7 @@ import {
   unsaveStudentGig,
 } from '../studentApi'
 import { buildDemoGigState } from './gigDemoData'
+import { toast } from '../../ui/toast'
 
 const GIG_SUBNAV = [
   { key: 'opportunity', label: 'Opportunity', icon: '🎯' },
@@ -30,6 +31,15 @@ function EmptyState({ icon, msg }) {
 }
 
 function GigCard({ gig, isApplied, isSaved, onApply, onToggleSave, showApply = false, showSave = false, status }) {
+  const statusMeta = {
+    active: { label: '⚡ In Progress', bg: '#D1FAE5', color: '#065F46' },
+    applied: { label: '📤 Applied', bg: '#EFF6FF', color: '#1D4ED8' },
+    reviewed: { label: '📝 Reviewed', bg: '#EDE9FE', color: '#6D28D9' },
+    ready_to_hire: { label: '🎉 Ready to Hire', bg: '#D1FAE5', color: '#065F46' },
+    needs_revision: { label: '🔁 Needs Revision', bg: '#FEF3C7', color: '#92400E' },
+  }
+  const resolvedStatus = typeof status === 'string' ? (statusMeta[status] || { label: status, bg: '#FEF9C3', color: '#854D0E' }) : null
+
   return (
     <div style={{
       background: 'var(--white)', borderRadius: 12, padding: '18px 22px',
@@ -58,14 +68,14 @@ function GigCard({ gig, isApplied, isSaved, onApply, onToggleSave, showApply = f
         ))}
         {gig.posted ? <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--muted)', alignSelf: 'center' }}>🕐 {gig.posted}</span> : null}
       </div>
-      {status ? (
+      {resolvedStatus ? (
         <div style={{ marginBottom: 10 }}>
           <span style={{
             padding: '3px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700,
-            background: status === 'active' ? '#D1FAE5' : status === 'applied' ? '#EFF6FF' : '#FEF9C3',
-            color: status === 'active' ? '#065F46' : status === 'applied' ? '#1D4ED8' : '#854D0E',
+            background: resolvedStatus.bg,
+            color: resolvedStatus.color,
           }}>
-            {status === 'active' ? '⚡ In Progress' : status === 'applied' ? '📤 Applied' : status}
+            {resolvedStatus.label}
           </span>
         </div>
       ) : null}
@@ -149,30 +159,35 @@ export default function GigCenter() {
   const syncGigState = async (updater, requestFn) => {
     if (!sessionToken) {
       setGigState(current => updater(current))
-      return
+      return true
     }
 
     try {
       const result = await requestFn()
       setGigState(result.gigState)
+      return true
     } catch (error) {
-      setGigState(current => updater(current))
+      return false
     }
   }
 
   const handleApply = async (gigId) => {
-    await syncGigState(
+    const didSucceed = await syncGigState(
       current => current.appliedGigIds.includes(gigId)
         ? current
         : { ...current, appliedGigIds: [...current.appliedGigIds, gigId] },
       () => applyStudentGig(sessionToken, gigId),
     )
+
+    if (didSucceed) {
+      toast.success('GIG application submitted.', { title: 'Applied Successfully' })
+    }
   }
 
   const handleToggleSave = async (gigId) => {
     const isSaved = savedGigIds.includes(gigId)
 
-    await syncGigState(
+    const didSucceed = await syncGigState(
       current => ({
         ...current,
         savedGigIds: isSaved
@@ -181,10 +196,16 @@ export default function GigCenter() {
       }),
       () => isSaved ? unsaveStudentGig(sessionToken, gigId) : saveStudentGig(sessionToken, gigId),
     )
+
+    if (didSucceed) {
+      toast.info(isSaved ? 'Removed from Saved GIGs.' : 'Added to Saved GIGs.', {
+        title: isSaved ? 'GIG Unsaved' : 'GIG Saved',
+      })
+    }
   }
 
   const handleAcceptOpportunity = async (opportunity) => {
-    await syncGigState(
+    const didSucceed = await syncGigState(
       current => ({
         ...current,
         opportunities: current.opportunities.map(item => (
@@ -193,10 +214,14 @@ export default function GigCenter() {
       }),
       () => acceptStudentOpportunity(sessionToken, opportunity.id),
     )
+
+    if (didSucceed) {
+      toast.success('Company invite accepted.', { title: 'Interview Task Unlocked' })
+    }
   }
 
   const handleDeclineOpportunity = async (opportunity) => {
-    await syncGigState(
+    const didSucceed = await syncGigState(
       current => ({
         ...current,
         opportunities: current.opportunities.map(item => (
@@ -205,6 +230,10 @@ export default function GigCenter() {
       }),
       () => declineStudentOpportunity(sessionToken, opportunity.id),
     )
+
+    if (didSucceed) {
+      toast.info('Invite declined successfully.', { title: 'Opportunity Updated' })
+    }
   }
 
   return (
@@ -298,7 +327,7 @@ export default function GigCenter() {
               <GigCard
                 key={gig.id}
                 gig={gig}
-                status="active"
+                status={gig.bridgeStatus || 'active'}
                 isApplied={appliedGigIds.includes(gig.id)}
                 isSaved={savedGigIds.includes(gig.id)}
                 onApply={handleApply}

@@ -8,6 +8,13 @@ const {
   buildDefaultCompanyWorkspaceState,
 } = require('../config/companyDefaults')
 const { createSessionToken, hashPassword, verifyPassword } = require('../utils/auth')
+const {
+  appendSession,
+  buildAuthError,
+  findModelByActiveToken,
+  getSessionTtlMs,
+} = require('../utils/session')
+const { consumeSectionOperation } = require('../utils/sectionUsage')
 const { clone, mergeTemplateState, reduceTemplateState } = require('../utils/templateState')
 
 function normalizeEmail(email) {
@@ -16,12 +23,6 @@ function normalizeEmail(email) {
 
 function normalizePhone(phone) {
   return phone?.replace(/\D/g, '') || ''
-}
-
-function buildAuthError(message, statusCode = 400) {
-  const error = new Error(message)
-  error.statusCode = statusCode
-  return error
 }
 
 function sanitizeCompanyProfile(profile, fallback) {
@@ -183,18 +184,12 @@ function sanitizeCompany(company) {
   }
 }
 
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
 async function findCompanyByToken(token) {
-  if (!token) {
-    throw buildAuthError('Missing session token', 401)
-  }
-
-  const company = await Company.findOne({ 'sessions.token': token })
-
-  if (!company) {
-    throw buildAuthError('Session expired. Please sign in again.', 401)
-  }
-
-  return company
+  return findModelByActiveToken(Company, token, 'Company', getSessionTtlMs(Number(process.env.SESSION_TTL_DAYS) || 30))
 }
 
 async function signUpCompany(payload) {
@@ -239,8 +234,7 @@ async function signUpCompany(payload) {
   })
 
   const token = createSessionToken()
-  company.sessions.push({ token })
-  await company.save()
+  await appendSession(company, token, Number(process.env.MAX_SESSIONS_PER_ACCOUNT) || 5)
 
   return {
     token,
@@ -268,8 +262,7 @@ async function signInCompany(payload) {
   }
 
   const token = createSessionToken()
-  company.sessions.push({ token })
-  await company.save()
+  await appendSession(company, token, Number(process.env.MAX_SESSIONS_PER_ACCOUNT) || 5)
 
   return {
     token,
@@ -288,9 +281,16 @@ async function updateCurrentCompany(token, payload) {
     businessName: company.businessName,
     location: company.location,
   })
+  const sectionLimit = Number(process.env.DAILY_SECTION_OPERATION_LIMIT) || 2
 
   if (payload.businessProfile) {
     const businessProfile = sanitizeCompanyProfile(payload.businessProfile, fallbackProfile)
+    const currentBusinessProfile = sanitizeCompanyProfile(company.businessProfile, fallbackProfile)
+
+    if (!sameJson(currentBusinessProfile, businessProfile)) {
+      consumeSectionOperation(company, 'setup-business-profile', 'Setup Business Profile', sectionLimit)
+    }
+
     company.businessProfile = businessProfile
 
     if (businessProfile.businessName.trim()) {
@@ -301,19 +301,47 @@ async function updateCurrentCompany(token, payload) {
   }
 
   if (payload.dashboardState) {
-    company.dashboardState = reduceTemplateState(sanitizeDashboardState(payload.dashboardState), buildDefaultCompanyDashboardState())
+    const nextDashboardState = sanitizeDashboardState(payload.dashboardState)
+    const currentDashboardState = sanitizeDashboardState(company.dashboardState)
+
+    if (!sameJson(currentDashboardState, nextDashboardState)) {
+      consumeSectionOperation(company, 'my-business', 'My Business', sectionLimit)
+    }
+
+    company.dashboardState = reduceTemplateState(nextDashboardState, buildDefaultCompanyDashboardState())
   }
 
   if (payload.gigManagementState) {
-    company.gigManagementState = reduceTemplateState(sanitizeGigManagementState(payload.gigManagementState), buildDefaultCompanyGigManagementState())
+    const nextGigManagementState = sanitizeGigManagementState(payload.gigManagementState)
+    const currentGigManagementState = sanitizeGigManagementState(company.gigManagementState)
+
+    if (!sameJson(currentGigManagementState, nextGigManagementState)) {
+      consumeSectionOperation(company, 'gig-management', 'GIG Management', sectionLimit)
+    }
+
+    company.gigManagementState = reduceTemplateState(nextGigManagementState, buildDefaultCompanyGigManagementState())
   }
 
   if (payload.projectWorkspaceState) {
-    company.projectWorkspaceState = reduceTemplateState(sanitizeProjectWorkspaceState(payload.projectWorkspaceState), buildDefaultCompanyWorkspaceState())
+    const nextWorkspaceState = sanitizeProjectWorkspaceState(payload.projectWorkspaceState)
+    const currentWorkspaceState = sanitizeProjectWorkspaceState(company.projectWorkspaceState)
+
+    if (!sameJson(currentWorkspaceState, nextWorkspaceState)) {
+      consumeSectionOperation(company, 'project-workspace', 'Project Workspace', sectionLimit)
+    }
+
+    company.projectWorkspaceState = reduceTemplateState(nextWorkspaceState, buildDefaultCompanyWorkspaceState())
   }
 
   if (payload.paymentState) {
-    company.paymentState = reduceTemplateState(sanitizePaymentState(payload.paymentState), buildDefaultCompanyPaymentState())
+    const nextPaymentState = sanitizePaymentState(payload.paymentState)
+    const currentPaymentState = sanitizePaymentState(company.paymentState)
+
+    if (!sameJson(currentPaymentState, nextPaymentState)) {
+      consumeSectionOperation(company, 'payment', 'Payment', sectionLimit)
+    }
+
+    company.paymentState = reduceTemplateState(nextPaymentState, buildDefaultCompanyPaymentState())
   }
 
   await company.save()
@@ -334,7 +362,18 @@ async function getCurrentCompanyGigManagementState(token) {
 
 async function updateCurrentCompanyGigManagementState(token, payload) {
   const company = await findCompanyByToken(token)
+  const currentState = sanitizeGigManagementState(company.gigManagementState)
   const nextState = sanitizeGigManagementState(payload.gigManagementState)
+
+  if (!sameJson(currentState, nextState)) {
+    consumeSectionOperation(
+      company,
+      'gig-management',
+      'GIG Management',
+      Number(process.env.DAILY_SECTION_OPERATION_LIMIT) || 2,
+    )
+  }
+
   company.gigManagementState = reduceTemplateState(nextState, buildDefaultCompanyGigManagementState())
   await company.save()
   return nextState
@@ -347,7 +386,18 @@ async function getCurrentCompanyProjectWorkspaceState(token) {
 
 async function updateCurrentCompanyProjectWorkspaceState(token, payload) {
   const company = await findCompanyByToken(token)
+  const currentState = sanitizeProjectWorkspaceState(company.projectWorkspaceState)
   const nextState = sanitizeProjectWorkspaceState(payload.projectWorkspaceState)
+
+  if (!sameJson(currentState, nextState)) {
+    consumeSectionOperation(
+      company,
+      'project-workspace',
+      'Project Workspace',
+      Number(process.env.DAILY_SECTION_OPERATION_LIMIT) || 2,
+    )
+  }
+
   company.projectWorkspaceState = reduceTemplateState(nextState, buildDefaultCompanyWorkspaceState())
   await company.save()
   return nextState
@@ -360,7 +410,18 @@ async function getCurrentCompanyPaymentState(token) {
 
 async function updateCurrentCompanyPaymentState(token, payload) {
   const company = await findCompanyByToken(token)
+  const currentState = sanitizePaymentState(company.paymentState)
   const nextState = sanitizePaymentState(payload.paymentState)
+
+  if (!sameJson(currentState, nextState)) {
+    consumeSectionOperation(
+      company,
+      'payment',
+      'Payment',
+      Number(process.env.DAILY_SECTION_OPERATION_LIMIT) || 2,
+    )
+  }
+
   company.paymentState = reduceTemplateState(nextState, buildDefaultCompanyPaymentState())
   await company.save()
   return nextState

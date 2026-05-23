@@ -152,11 +152,14 @@ export default function Taskpage() {
       <div className="responsive-modal-card" style={{
         width: '100%',
         maxWidth: 760,
+        maxHeight: 'calc(100vh - 48px)',
         background: 'var(--white)',
         borderRadius: 18,
         border: '2px solid #FCA5A5',
         boxShadow: '0 24px 60px rgba(15,23,42,0.22)',
         overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
       }}>
         <div className="responsive-modal-header" style={{
           background: 'linear-gradient(135deg, #7F1D1D, #B91C1C)',
@@ -198,7 +201,7 @@ export default function Taskpage() {
           </div>
         </div>
 
-        <div className="responsive-modal-body" style={{ padding: '24px 28px 28px' }}>
+        <div className="responsive-modal-body" style={{ padding: '24px 28px 20px', overflowY: 'auto', flex: 1 }}>
           <div style={{
             background: '#FEF2F2',
             border: '1px solid #FECACA',
@@ -230,6 +233,9 @@ export default function Taskpage() {
             ))}
           </div>
 
+        </div>
+
+        <div className="responsive-modal-body" style={{ paddingTop: 0, borderTop: '1px solid var(--border)', background: 'var(--white)' }}>
           <div className="responsive-stack" style={{ display: 'flex', gap: 10 }}>
             <button
               onClick={() => navigate('/student/dashboard')}
@@ -262,9 +268,10 @@ export default function Taskpage() {
 
   if (isCompanyInterviewTask) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '32px 24px' }}>
-        <div style={{ maxWidth: 980, margin: '0 auto' }}>
+      <div className="taskpage-shell" style={{ minHeight: '100vh', background: 'var(--bg)', padding: '32px 24px' }}>
+        <div className="taskpage-container" style={{ maxWidth: 980, margin: '0 auto' }}>
           <button
+            className="taskpage-back-button"
             onClick={() => navigate('/student/dashboard')}
             style={{
               marginBottom: 18,
@@ -288,9 +295,10 @@ export default function Taskpage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '32px 24px' }}>
-      <div style={{ maxWidth: 980, margin: '0 auto' }}>
+    <div className="taskpage-shell" style={{ minHeight: '100vh', background: 'var(--bg)', padding: '32px 24px' }}>
+      <div className="taskpage-container" style={{ maxWidth: 980, margin: '0 auto' }}>
         <button
+          className="taskpage-back-button"
           onClick={() => navigate('/student/dashboard')}
           style={{
             marginBottom: 18,
@@ -306,7 +314,7 @@ export default function Taskpage() {
           ← Back to Dashboard
         </button>
 
-        <div style={{
+        <div className="taskpage-hero" style={{
           background: 'linear-gradient(135deg, var(--dark), #1E1B4B)',
           borderRadius: 16,
           padding: '28px 30px',
@@ -343,7 +351,7 @@ export default function Taskpage() {
             <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--dark)', marginBottom: 16 }}>Task Flow</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {tasks.map((task, index) => (
-                <div key={task.title} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div key={task.title} className="taskpage-flow-item" style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                   <div style={{
                     width: 34,
                     height: 34,
@@ -384,7 +392,7 @@ export default function Taskpage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {dummyQuestions.map((question, index) => (
-                  <div key={question} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div key={question} className="taskpage-question-item" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{
                       width: 24,
                       height: 24,

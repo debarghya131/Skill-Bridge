@@ -1,6 +1,13 @@
 const Student = require('../models/Student')
 const { buildDefaultStudentProfile } = require('../config/studentDefaults')
 const { createSessionToken, hashPassword, verifyPassword } = require('../utils/auth')
+const {
+  appendSession,
+  buildAuthError,
+  findModelByActiveToken,
+  getSessionTtlMs,
+} = require('../utils/session')
+const { consumeSectionOperation } = require('../utils/sectionUsage')
 
 function normalizeEmail(email) {
   return email?.trim().toLowerCase() || ''
@@ -12,6 +19,10 @@ function normalizePhone(phone) {
 
 function createTrustScore() {
   return Math.floor(Math.random() * 200) + 720
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right)
 }
 
 function sanitizeStudent(student) {
@@ -34,24 +45,8 @@ function sanitizeStudent(student) {
   }
 }
 
-function buildAuthError(message, statusCode = 400) {
-  const error = new Error(message)
-  error.statusCode = statusCode
-  return error
-}
-
 async function findStudentByToken(token) {
-  if (!token) {
-    throw buildAuthError('Missing session token', 401)
-  }
-
-  const student = await Student.findOne({ 'sessions.token': token })
-
-  if (!student) {
-    throw buildAuthError('Session expired. Please sign in again.', 401)
-  }
-
-  return student
+  return findModelByActiveToken(Student, token, 'Student', getSessionTtlMs(Number(process.env.SESSION_TTL_DAYS) || 30))
 }
 
 async function signUpStudent(payload) {
@@ -96,8 +91,7 @@ async function signUpStudent(payload) {
   })
 
   const token = createSessionToken()
-  student.sessions.push({ token })
-  await student.save()
+  await appendSession(student, token, Number(process.env.MAX_SESSIONS_PER_ACCOUNT) || 5)
 
   return {
     token,
@@ -125,8 +119,7 @@ async function signInStudent(payload) {
   }
 
   const token = createSessionToken()
-  student.sessions.push({ token })
-  await student.save()
+  await appendSession(student, token, Number(process.env.MAX_SESSIONS_PER_ACCOUNT) || 5)
 
   return {
     token,
@@ -187,6 +180,35 @@ async function updateCurrentStudent(token, payload) {
 
   if (payload.videoUrl === null || typeof payload.videoUrl === 'string') {
     updates.videoUrl = payload.videoUrl
+  }
+
+  const nextStudentState = {
+    name: Object.prototype.hasOwnProperty.call(updates, 'name') ? updates.name : student.name,
+    avatar: Object.prototype.hasOwnProperty.call(updates, 'avatar') ? updates.avatar : student.avatar,
+    skills: Object.prototype.hasOwnProperty.call(updates, 'skills') ? updates.skills : student.skills,
+    githubLink: Object.prototype.hasOwnProperty.call(updates, 'githubLink') ? updates.githubLink : student.githubLink,
+    contactInfo: Object.prototype.hasOwnProperty.call(updates, 'contactInfo') ? updates.contactInfo : student.contactInfo,
+    projects: Object.prototype.hasOwnProperty.call(updates, 'projects') ? updates.projects : student.projects,
+    videoUrl: Object.prototype.hasOwnProperty.call(updates, 'videoUrl') ? updates.videoUrl : student.videoUrl,
+  }
+
+  const currentStudentState = {
+    name: student.name,
+    avatar: student.avatar,
+    skills: student.skills,
+    githubLink: student.githubLink,
+    contactInfo: student.contactInfo,
+    projects: student.projects,
+    videoUrl: student.videoUrl,
+  }
+
+  if (!sameJson(currentStudentState, nextStudentState)) {
+    consumeSectionOperation(
+      student,
+      'my-profile',
+      'My Profile',
+      Number(process.env.DAILY_SECTION_OPERATION_LIMIT) || 2,
+    )
   }
 
   Object.assign(student, updates)

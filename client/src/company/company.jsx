@@ -28,6 +28,7 @@ import GigManagement from './GigManagement'
 import PaymentSection from './PaymentSection'
 import SetupBusinessProfile from './SetupBusinessProfile'
 import ProjectWorkspace from './ProjectWorkspace'
+import { toast } from '../ui/toast'
 
 const SKILL_LEVELS = ['All', 'Beginner', 'Intermediate', 'Pro']
 const VERIFIED_SKILL_SET = new Set(['React', 'Node.js', 'UI/UX Design', 'Python', 'SEO', 'Content Writing'])
@@ -399,6 +400,8 @@ export default function CompanyDashboard() {
         if (!cancelled) {
           clearCompanySessionToken()
           sessionTokenRef.current = ''
+          toast.warning('Your company session expired. Please sign in again.', { title: 'Authentication Required' })
+          navigate('/company', { replace: true })
         }
       } finally {
         if (!cancelled) {
@@ -597,6 +600,7 @@ export default function CompanyDashboard() {
       }
     }
 
+    toast.info('You have been signed out.', { title: 'Company Session Closed' })
     navigate('/')
   }
 
@@ -614,6 +618,15 @@ export default function CompanyDashboard() {
       item.id === reviewedSubmission.id ? reviewedSubmission : item
     )))
 
+    if (result.gigManagementState) {
+      setGigManagementState(mergeCompanyGigManagementState(result.gigManagementState))
+    }
+
+    if (result.projectWorkspaceState) {
+      setProjectWorkspaceState(mergeCompanyWorkspaceState(result.projectWorkspaceState))
+    }
+
+    toast.success('Task review saved successfully.', { title: 'GIG Review Updated' })
     return reviewedSubmission
   }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { setStudentSessionToken, signInStudent, signUpStudent } from './studentApi'
+import { toast } from '../ui/toast'
 
 const LANGUAGES = [
   'Hindi', 'English', 'Bengali', 'Telugu', 'Marathi',
@@ -101,6 +102,7 @@ export default function StudentAuth() {
       })
 
       setStudentSessionToken(result.token)
+      toast.success('Student account created successfully.', { title: 'Welcome to SkillBridge' })
       navigate('/student/dashboard', { state: { student: result.student } })
     } catch (error) {
       setServerError(error.message)
@@ -127,6 +129,7 @@ export default function StudentAuth() {
       })
 
       setStudentSessionToken(result.token)
+      toast.success('Signed in successfully.', { title: 'Student Session Active' })
       navigate('/student/dashboard', { state: { student: result.student } })
     } catch (error) {
       setServerError(error.message)

@@ -1,25 +1,11 @@
 const Student = require('../models/Student')
 const { buildDefaultNetworkState } = require('../config/networkDefaults')
+const { consumeSectionOperation } = require('../utils/sectionUsage')
 const { clone, mergeTemplateState, reduceTemplateState } = require('../utils/templateState')
-
-function buildAuthError(message, statusCode = 400) {
-  const error = new Error(message)
-  error.statusCode = statusCode
-  return error
-}
+const { findModelByActiveToken, getSessionTtlMs } = require('../utils/session')
 
 async function findStudentByToken(token) {
-  if (!token) {
-    throw buildAuthError('Missing session token', 401)
-  }
-
-  const student = await Student.findOne({ 'sessions.token': token })
-
-  if (!student) {
-    throw buildAuthError('Session expired. Please sign in again.', 401)
-  }
-
-  return student
+  return findModelByActiveToken(Student, token, 'Student', getSessionTtlMs(Number(process.env.SESSION_TTL_DAYS) || 30))
 }
 
 function sanitizeIdList(list, fallback) {
@@ -64,7 +50,18 @@ async function getStudentNetworkState(token) {
 
 async function updateStudentNetworkState(token, payload) {
   const student = await findStudentByToken(token)
+  const currentState = sanitizeNetworkState(student.networkState)
   const nextState = sanitizeNetworkState(payload.networkState)
+
+  if (JSON.stringify(currentState) !== JSON.stringify(nextState)) {
+    consumeSectionOperation(
+      student,
+      'network',
+      'Network',
+      Number(process.env.DAILY_SECTION_OPERATION_LIMIT) || 2,
+    )
+  }
+
   student.networkState = reduceTemplateState(nextState, buildDefaultNetworkState())
   await student.save()
   return nextState

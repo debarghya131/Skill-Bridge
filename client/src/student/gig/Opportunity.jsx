@@ -8,6 +8,26 @@ const TYPE_META = {
   'Part-Time GIG': { bg: '#F3E8FF', color: '#7C3AED' },
   'Project GIG': { bg: '#D1FAE5', color: '#065F46' },
 }
+const TASK_STATUS_META = {
+  reviewed: {
+    badge: '📝 Reviewed',
+    bg: '#EDE9FE',
+    color: '#6D28D9',
+    copy: 'Your interview task was reviewed. Open the task page to see the latest notes.',
+  },
+  ready_to_hire: {
+    badge: '🎉 Ready to Hire',
+    bg: '#D1FAE5',
+    color: '#065F46',
+    copy: 'You moved forward in the company pipeline. Check your Active GIG tab for the next step.',
+  },
+  needs_revision: {
+    badge: '🔁 Needs Revision',
+    bg: '#FEF3C7',
+    color: '#92400E',
+    copy: 'The company asked for an updated submission. Open the task page to revise your work.',
+  },
+}
 
 export default function Opportunity({
   opportunities = [],
@@ -45,6 +65,7 @@ export default function Opportunity({
           const isExpanded = expanded === item.id
           const isAccepted = item.status === 'accepted'
           const typeMeta = TYPE_META[item.type] || { bg: 'var(--bg)', color: 'var(--muted)' }
+          const taskStatusMeta = item.taskSubmissionStatus ? TASK_STATUS_META[item.taskSubmissionStatus] : null
 
           return (
             <div key={item.id} style={{
@@ -68,6 +89,7 @@ export default function Opportunity({
                     <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--dark)' }}>{item.title}</span>
                     <span style={{ fontSize: 11, fontWeight: 700, background: typeMeta.bg, color: typeMeta.color, padding: '2px 9px', borderRadius: 100 }}>{item.type}</span>
                     {isAccepted && <span style={{ fontSize: 11, fontWeight: 700, background: '#D1FAE5', color: '#065F46', padding: '2px 9px', borderRadius: 100 }}>✓ Accepted</span>}
+                    {taskStatusMeta && <span style={{ fontSize: 11, fontWeight: 700, background: taskStatusMeta.bg, color: taskStatusMeta.color, padding: '2px 9px', borderRadius: 100 }}>{taskStatusMeta.badge}</span>}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>
                     🏢 {item.company} · 📍 {item.location} · 🕐 Sent {item.sentOn}
@@ -137,9 +159,16 @@ export default function Opportunity({
                       </div>
                     </>
                   ) : (
-                    <span style={{ fontSize: 13, color: '#10B981', fontWeight: 700 }}>
-                      ✓ You accepted this invite — company will contact you shortly
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ fontSize: 13, color: taskStatusMeta ? taskStatusMeta.color : '#10B981', fontWeight: 700 }}>
+                        {taskStatusMeta ? taskStatusMeta.copy : '✓ You accepted this invite — company will contact you shortly'}
+                      </span>
+                      {item.companyFeedback ? (
+                        <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
+                          Feedback: {item.companyFeedback}
+                        </span>
+                      ) : null}
+                    </div>
                   )}
                   <button
                     onClick={() => toggle(item.id)}

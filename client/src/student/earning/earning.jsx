@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { clearStudentSessionToken, fetchStudentEarning, getStudentSessionToken, saveStudentEarning } from '../studentApi'
 import { buildDemoEarningState } from './earningDemoData'
+import { toast } from '../../ui/toast'
 
 export default function Earning() {
   const sessionTokenRef = useRef(getStudentSessionToken())
@@ -73,7 +74,10 @@ export default function Earning() {
   }
 
   const requestWithdraw = () => {
-    if (!withdrawAmount) return
+    if (!withdrawAmount) {
+      toast.warning('Enter a withdrawal amount first.', { title: 'Withdrawal Needed' })
+      return
+    }
 
     setEarningState(current => ({
       ...current,
@@ -90,6 +94,8 @@ export default function Earning() {
       ],
       withdrawAmount: '',
     }))
+
+    toast.success('Withdrawal request created.', { title: 'UPI Payout Requested' })
   }
 
   return (

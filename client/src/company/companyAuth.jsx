@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { setCompanySessionToken, signInCompany, signUpCompany } from './companyApi'
+import { toast } from '../ui/toast'
 
 const inputStyle = {
   width: '100%', padding: '8px 12px',
@@ -97,6 +98,7 @@ export default function CompanyAuth() {
       })
 
       setCompanySessionToken(result.token)
+      toast.success('Business account created successfully.', { title: 'Company Onboarded' })
       navigate('/company/dashboard', { state: { company: result.company } })
     } catch (error) {
       setServerError(error.message)
@@ -125,6 +127,7 @@ export default function CompanyAuth() {
       })
 
       setCompanySessionToken(result.token)
+      toast.success('Signed in successfully.', { title: 'Company Session Active' })
       navigate('/company/dashboard', { state: { company: result.company } })
     } catch (error) {
       setServerError(error.message)

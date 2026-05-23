@@ -1,25 +1,11 @@
 const Student = require('../models/Student')
 const { buildDefaultEarningState } = require('../config/earningDefaults')
+const { consumeSectionOperation } = require('../utils/sectionUsage')
 const { clone, mergeTemplateState, reduceTemplateState } = require('../utils/templateState')
-
-function buildAuthError(message, statusCode = 400) {
-  const error = new Error(message)
-  error.statusCode = statusCode
-  return error
-}
+const { findModelByActiveToken, getSessionTtlMs } = require('../utils/session')
 
 async function findStudentByToken(token) {
-  if (!token) {
-    throw buildAuthError('Missing session token', 401)
-  }
-
-  const student = await Student.findOne({ 'sessions.token': token })
-
-  if (!student) {
-    throw buildAuthError('Session expired. Please sign in again.', 401)
-  }
-
-  return student
+  return findModelByActiveToken(Student, token, 'Student', getSessionTtlMs(Number(process.env.SESSION_TTL_DAYS) || 30))
 }
 
 function sanitizeString(value, fallback = '') {
@@ -86,7 +72,18 @@ async function getStudentEarningState(token) {
 
 async function updateStudentEarningState(token, payload) {
   const student = await findStudentByToken(token)
+  const currentState = sanitizeEarningState(student.earningState)
   const nextState = sanitizeEarningState(payload.earningState)
+
+  if (JSON.stringify(currentState) !== JSON.stringify(nextState)) {
+    consumeSectionOperation(
+      student,
+      'earning',
+      'Earning',
+      Number(process.env.DAILY_SECTION_OPERATION_LIMIT) || 2,
+    )
+  }
+
   student.earningState = reduceTemplateState(nextState, buildDefaultEarningState())
   await student.save()
   return nextState

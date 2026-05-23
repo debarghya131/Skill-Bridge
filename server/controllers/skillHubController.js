@@ -1,24 +1,10 @@
 const Student = require('../models/Student')
 const { buildDefaultSkillHubSkills } = require('../config/skillHubDefaults')
-
-function buildAuthError(message, statusCode = 400) {
-  const error = new Error(message)
-  error.statusCode = statusCode
-  return error
-}
+const { consumeSectionOperation } = require('../utils/sectionUsage')
+const { findModelByActiveToken, getSessionTtlMs } = require('../utils/session')
 
 async function findStudentByToken(token) {
-  if (!token) {
-    throw buildAuthError('Missing session token', 401)
-  }
-
-  const student = await Student.findOne({ 'sessions.token': token })
-
-  if (!student) {
-    throw buildAuthError('Session expired. Please sign in again.', 401)
-  }
-
-  return student
+  return findModelByActiveToken(Student, token, 'Student', getSessionTtlMs(Number(process.env.SESSION_TTL_DAYS) || 30))
 }
 
 function sanitizeSkill(skill) {
@@ -56,6 +42,10 @@ function buildStudentSkillHubSkills(student) {
   return [...defaults, ...addedSkills]
 }
 
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
 async function getStudentSkillHub(token) {
   const student = await findStudentByToken(token)
   const mergedSkills = buildStudentSkillHubSkills(student)
@@ -71,11 +61,25 @@ async function updateStudentSkillHub(token, payload) {
   const student = await findStudentByToken(token)
   const defaults = buildDefaultSkillHubSkills().map(sanitizeSkill)
   const defaultNames = new Set(defaults.map(skill => skill.name.toLowerCase()))
+  const currentSkills = buildStudentSkillHubSkills(student)
 
   if (Array.isArray(payload.skills)) {
-    student.skillHubSkills = payload.skills
+    const nextCustomSkills = payload.skills
       .map(sanitizeSkill)
       .filter(skill => skill.name && !defaultNames.has(skill.name.toLowerCase()))
+
+    const nextSkills = [...defaults, ...nextCustomSkills]
+
+    if (!sameJson(currentSkills, nextSkills)) {
+      consumeSectionOperation(
+        student,
+        'skill-hub',
+        'Skill Hub',
+        Number(process.env.DAILY_SECTION_OPERATION_LIMIT) || 2,
+      )
+    }
+
+    student.skillHubSkills = nextCustomSkills
   }
 
   syncProfileSkills(student)

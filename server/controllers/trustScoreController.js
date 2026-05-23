@@ -1,24 +1,9 @@
 const Student = require('../models/Student')
 const { buildTrustScoreFactors, buildTrustScoreSummary } = require('../config/trustScoreDefaults')
-
-function buildAuthError(message, statusCode = 400) {
-  const error = new Error(message)
-  error.statusCode = statusCode
-  return error
-}
+const { findModelByActiveToken, getSessionTtlMs } = require('../utils/session')
 
 async function findStudentByToken(token) {
-  if (!token) {
-    throw buildAuthError('Missing session token', 401)
-  }
-
-  const student = await Student.findOne({ 'sessions.token': token })
-
-  if (!student) {
-    throw buildAuthError('Session expired. Please sign in again.', 401)
-  }
-
-  return student
+  return findModelByActiveToken(Student, token, 'Student', getSessionTtlMs(Number(process.env.SESSION_TTL_DAYS) || 30))
 }
 
 async function getStudentTrustScore(token) {

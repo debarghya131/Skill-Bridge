@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { buildDefaultCompanyPaymentState, mergeCompanyPaymentState } from './companyPaymentDemoData'
+import { toast } from '../ui/toast'
 
 function formatDateLabel(date = new Date()) {
   return date.toLocaleDateString('en-US', {
@@ -63,6 +64,8 @@ export default function PaymentSection({ paymentState, onSaveState }) {
         ].slice(0, 8),
       }
     })
+
+    toast.success('₹10,000 added to the company wallet.', { title: 'Funds Added' })
   }
 
   const handleSetupPayouts = () => {
@@ -84,6 +87,8 @@ export default function PaymentSection({ paymentState, onSaveState }) {
         ...current.transactions,
       ].slice(0, 8),
     }))
+
+    toast.info('Payout methods refreshed and verified.', { title: 'Payout Setup Updated' })
   }
 
   return (

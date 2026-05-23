@@ -8,6 +8,7 @@ import StudentNav from './studentNav'
 import StudentSidebar from './studentSidebar'
 import { clearStudentSessionToken, fetchCurrentStudent, fetchStudentTrustScore, getStudentSessionToken, logoutStudent, saveStudentProfile } from './studentApi'
 import { mergeStudentProfile } from './studentProfileDefaults'
+import { toast } from '../ui/toast'
 
 const NAV_ITEMS = [
   { key: 'gig',        icon: '💼', label: 'GIG Center' },
@@ -796,6 +797,8 @@ export default function StudentDashboard() {
         if (!cancelled) {
           clearStudentSessionToken()
           sessionTokenRef.current = ''
+          toast.warning('Your student session expired. Please sign in again.', { title: 'Authentication Required' })
+          navigate('/student', { replace: true })
         }
       } finally {
         if (!cancelled) {
@@ -846,6 +849,7 @@ export default function StudentDashboard() {
       }
     }
 
+    toast.info('You have been signed out.', { title: 'Student Session Closed' })
     navigate('/')
   }
 
