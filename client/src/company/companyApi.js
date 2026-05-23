@@ -145,3 +145,22 @@ export async function saveCompanyPayment(token, payload) {
     body: JSON.stringify(payload),
   })
 }
+
+export async function fetchCompanyTaskSubmissions(token) {
+  return request('/api/company/tasks/submissions', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export async function reviewCompanyTaskSubmission(token, submissionId, payload) {
+  return request(`/api/company/tasks/submissions/${submissionId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+}

@@ -1,9 +1,5 @@
 const mongoose = require('mongoose')
-const { buildDefaultEarningState } = require('../config/earningDefaults')
 const { buildDefaultStudentProfile } = require('../config/studentDefaults')
-const { buildDefaultGigState } = require('../config/gigDefaults')
-const { buildDefaultNetworkState } = require('../config/networkDefaults')
-const { buildDefaultSkillHubSkills } = require('../config/skillHubDefaults')
 
 const profileLinkSchema = new mongoose.Schema({
   icon: { type: String, default: '🐙' },
@@ -62,12 +58,12 @@ const opportunitySchema = new mongoose.Schema({
 }, { _id: false })
 
 const gigStateSchema = new mongoose.Schema({
-  opportunities: { type: [opportunitySchema], default: () => buildDefaultGigState().opportunities },
-  browseGigs: { type: [gigSchema], default: () => buildDefaultGigState().browseGigs },
-  savedGigIds: { type: [Number], default: () => buildDefaultGigState().savedGigIds },
-  appliedGigIds: { type: [Number], default: () => buildDefaultGigState().appliedGigIds },
-  activeGigBase: { type: [gigSchema], default: () => buildDefaultGigState().activeGigBase },
-  completedGigs: { type: [gigSchema], default: () => buildDefaultGigState().completedGigs },
+  opportunities: { type: [opportunitySchema], default: undefined },
+  browseGigs: { type: [gigSchema], default: undefined },
+  savedGigIds: { type: [Number], default: undefined },
+  appliedGigIds: { type: [Number], default: undefined },
+  activeGigBase: { type: [gigSchema], default: undefined },
+  completedGigs: { type: [gigSchema], default: undefined },
 }, { _id: false })
 
 const skillHubSkillSchema = new mongoose.Schema({
@@ -104,10 +100,10 @@ const studentSchema = new mongoose.Schema({
   contactInfo: { type: [contactInfoSchema], default: () => buildDefaultStudentProfile().contactInfo },
   projects: { type: [projectSchema], default: () => buildDefaultStudentProfile().projects },
   videoUrl: { type: String, default: null },
-  skillHubSkills: { type: [skillHubSkillSchema], default: () => buildDefaultSkillHubSkills() },
-  gigState: { type: gigStateSchema, default: () => buildDefaultGigState() },
-  networkState: { type: mongoose.Schema.Types.Mixed, default: () => buildDefaultNetworkState() },
-  earningState: { type: mongoose.Schema.Types.Mixed, default: () => buildDefaultEarningState() },
+  skillHubSkills: { type: [skillHubSkillSchema], default: undefined },
+  gigState: { type: gigStateSchema, default: undefined },
+  networkState: { type: mongoose.Schema.Types.Mixed, default: undefined },
+  earningState: { type: mongoose.Schema.Types.Mixed, default: undefined },
   sessions: { type: [sessionSchema], default: [] },
 }, {
   timestamps: true,

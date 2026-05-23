@@ -13,40 +13,56 @@ const PROFILE_LEVEL_META = {
   Intermediate: { bg: '#EFF6FF', color: '#1D4ED8' },
   Beginner: { bg: '#F0FDF4', color: '#15803D' },
 }
+const REVIEW_STATUS_OPTIONS = [
+  { value: 'reviewed', label: 'Mark Reviewed' },
+  { value: 'ready_to_hire', label: 'Ready to Hire' },
+  { value: 'needs_revision', label: 'Needs Revision' },
+]
 
 function slugifyName(name = '') {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/(^\.|\.$)/g, '') || 'student'
 }
 
 function buildApplicantProfile(applicant) {
-  const githubSlug = slugifyName(applicant.name)
-  const skills = Array.isArray(applicant.skills) ? applicant.skills : []
+  const name = applicant.name || applicant.studentName || 'Student'
+  const githubSlug = slugifyName(name)
+  const skills = Array.isArray(applicant.skills)
+    ? applicant.skills
+    : (Array.isArray(applicant.studentSkills) ? applicant.studentSkills : [])
+  const contactInfo = Array.isArray(applicant.contactInfo) && applicant.contactInfo.length > 0
+    ? applicant.contactInfo
+    : (Array.isArray(applicant.studentContactInfo) ? applicant.studentContactInfo : [])
+  const savedProjects = Array.isArray(applicant.savedProjects) && applicant.savedProjects.length > 0
+    ? applicant.savedProjects
+    : (Array.isArray(applicant.studentProjects) ? applicant.studentProjects : [])
 
   return {
     ...applicant,
-    score: applicant.score ?? applicant.trustScore ?? 0,
+    name,
+    location: applicant.location || applicant.studentLocation || '',
+    score: applicant.score ?? applicant.trustScore ?? applicant.studentTrustScore ?? 0,
     skills,
-    skillsByLevel: applicant.skillsByLevel || {
+    skillsByLevel: applicant.skillsByLevel || applicant.studentSkillsByLevel || {
       Pro: skills.slice(0, 1),
       Intermediate: skills.slice(1),
       Beginner: [],
     },
-    streak: applicant.streak ?? 21,
-    github: applicant.github || `github.com/${githubSlug}`,
-    contactInfo: Array.isArray(applicant.contactInfo) && applicant.contactInfo.length > 0
-      ? applicant.contactInfo
+    streak: applicant.streak ?? applicant.studentStreak ?? 21,
+    github: applicant.github || applicant.studentGithub || `github.com/${githubSlug}`,
+    contactInfo: contactInfo.length > 0
+      ? contactInfo
       : [
         { label: 'Email', value: `${githubSlug}@skillbridge.demo` },
         { label: 'WhatsApp', value: '+91 98765 41001' },
       ],
-    savedProjects: Array.isArray(applicant.savedProjects) && applicant.savedProjects.length > 0
-      ? applicant.savedProjects
+    savedProjects: savedProjects.length > 0
+      ? savedProjects
       : (applicant.projects || []).map(project => (
         typeof project === 'string'
           ? { name: project, desc: 'Shared as a demo portfolio project for hiring review.' }
           : project
       )),
-    videoUrl: applicant.videoUrl || PROFILE_VIDEO_URL,
+    videoUrl: applicant.videoUrl || applicant.studentVideoUrl || PROFILE_VIDEO_URL,
   }
 }
 
@@ -294,6 +310,11 @@ function ApplicantsModal({ gig, applicants, onClose, onViewProfile }) {
                       {skill}
                     </span>
                   ))}
+                  {applicant.taskSubmission && (
+                    <span style={{ background: '#EDE9FE', color: '#6D28D9', padding: '3px 9px', borderRadius: 100, fontSize: 11, fontWeight: 800 }}>
+                      Task Submitted
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="responsive-company-gig-side" style={{ textAlign: 'right' }}>
@@ -311,10 +332,14 @@ function ApplicantsModal({ gig, applicants, onClose, onViewProfile }) {
   )
 }
 
-function ApplicantProfileModal({ applicant, onClose }) {
+function ApplicantProfileModal({ applicant, onClose, onReviewSubmission }) {
   const videoRef = useRef(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [levelFilter, setLevelFilter] = useState('All')
+  const [reviewStatus, setReviewStatus] = useState(applicant?.taskSubmission?.status || 'reviewed')
+  const [feedbackNote, setFeedbackNote] = useState(applicant?.taskSubmission?.feedback || '')
+  const [isSavingReview, setIsSavingReview] = useState(false)
+  const [reviewError, setReviewError] = useState('')
 
   if (!applicant) return null
 
@@ -331,6 +356,36 @@ function ApplicantProfileModal({ applicant, onClose }) {
     } else {
       videoRef.current.play()
       setIsPlaying(true)
+    }
+  }
+
+  const submissionStatusMeta = {
+    submitted: { label: 'Submitted', bg: '#EDE9FE', color: '#6D28D9' },
+    reviewed: { label: 'Reviewed', bg: '#DBEAFE', color: '#1D4ED8' },
+    ready_to_hire: { label: 'Ready to Hire', bg: '#D1FAE5', color: '#065F46' },
+    needs_revision: { label: 'Needs Revision', bg: '#FEF3C7', color: '#92400E' },
+  }
+  const currentSubmissionMeta = applicant.taskSubmission ? (submissionStatusMeta[applicant.taskSubmission.status] || submissionStatusMeta.submitted) : null
+
+  const handleReview = async () => {
+    if (!applicant.taskSubmission || !onReviewSubmission) {
+      return
+    }
+
+    setReviewError('')
+    setIsSavingReview(true)
+
+    try {
+      const reviewedSubmission = await onReviewSubmission(applicant.taskSubmission.id, {
+        status: reviewStatus,
+        feedback: feedbackNote,
+      })
+
+      applicant.taskSubmission = reviewedSubmission
+    } catch (error) {
+      setReviewError(error.message || 'Could not save review right now.')
+    } finally {
+      setIsSavingReview(false)
     }
   }
 
@@ -529,11 +584,79 @@ function ApplicantProfileModal({ applicant, onClose }) {
             </div>
           </div>
 
+          {applicant.taskSubmission && (
+            <div style={{ background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--border)', padding: '16px 18px' }}>
+              <div className="responsive-stack" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                  Interview Task Submission
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 800, background: currentSubmissionMeta.bg, color: currentSubmissionMeta.color, padding: '4px 10px', borderRadius: 100 }}>
+                  {currentSubmissionMeta.label}
+                </span>
+              </div>
+
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Submission Link</div>
+              <div style={{ fontSize: 13, color: 'var(--dark)', fontWeight: 700, marginBottom: 12, wordBreak: 'break-word' }}>
+                {applicant.taskSubmission.submissionLink}
+              </div>
+
+              {applicant.taskSubmission.note && (
+                <>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Student Note</div>
+                  <div style={{ fontSize: 13, color: 'var(--dark)', lineHeight: 1.6, marginBottom: 12 }}>
+                    {applicant.taskSubmission.note}
+                  </div>
+                </>
+              )}
+
+              <div className="responsive-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>Review Status</span>
+                  <select
+                    value={reviewStatus}
+                    onChange={e => setReviewStatus(e.target.value)}
+                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white)', fontSize: 13, fontFamily: 'inherit' }}
+                  >
+                    {REVIEW_STATUS_OPTIONS.map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>Feedback for Student</span>
+                  <textarea
+                    value={feedbackNote}
+                    onChange={e => setFeedbackNote(e.target.value)}
+                    rows={4}
+                    placeholder="Add review notes, revision guidance, or shortlist feedback..."
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                  />
+                </label>
+              </div>
+
+              {reviewError && (
+                <div style={{ fontSize: 12, color: '#B91C1C', fontWeight: 700, marginTop: 10 }}>
+                  {reviewError}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="responsive-stack" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button className="btn-accent" style={{ padding: '9px 16px', fontSize: 12 }}>Contact Applicant</button>
             <button style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--text)', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
               Send Interview Task
             </button>
+            {applicant.taskSubmission && (
+              <button
+                onClick={handleReview}
+                className="btn-accent"
+                style={{ padding: '9px 16px', fontSize: 12, opacity: isSavingReview ? 0.65 : 1 }}
+              >
+                {isSavingReview ? 'Saving Review...' : 'Save Review'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -541,7 +664,7 @@ function ApplicantProfileModal({ applicant, onClose }) {
   )
 }
 
-export default function GigManagement({ gigManagementState, onSaveState }) {
+export default function GigManagement({ gigManagementState, onSaveState, taskSubmissions = [], onReviewTaskSubmission }) {
   const [localState, setLocalState] = useState(() => mergeCompanyGigManagementState(gigManagementState || buildDefaultCompanyGigManagementState()))
   const [isCreateGigOpen, setIsCreateGigOpen] = useState(false)
   const [editingGig, setEditingGig] = useState(null)
@@ -566,8 +689,46 @@ export default function GigManagement({ gigManagementState, onSaveState }) {
     [localState.gigs, selectedGigId],
   )
   const selectedGigApplicants = useMemo(
-    () => (selectedGigId ? localState.applicantsByGig?.[selectedGigId] || [] : []),
-    [localState.applicantsByGig, selectedGigId],
+    () => {
+      const applicants = selectedGigId ? localState.applicantsByGig?.[selectedGigId] || [] : []
+
+      if (!selectedGig) {
+        return applicants
+      }
+
+      const relatedSubmissions = taskSubmissions.filter(item => item.gigTitle === selectedGig.title)
+      const submissionsByName = new Map(relatedSubmissions.map(item => [item.studentName.toLowerCase(), item]))
+      const applicantNames = new Set(applicants.map(item => item.name.toLowerCase()))
+
+      const mergedApplicants = applicants.map(item => {
+        const linkedSubmission = submissionsByName.get(item.name.toLowerCase())
+        return linkedSubmission ? { ...item, taskSubmission: linkedSubmission } : item
+      })
+
+      const submissionOnlyApplicants = relatedSubmissions
+        .filter(item => !applicantNames.has(item.studentName.toLowerCase()))
+        .map(item => ({
+          id: `submission-${item.id}`,
+          name: item.studentName,
+          trustScore: item.studentTrustScore,
+          location: item.studentLocation,
+          skills: item.studentSkills,
+          taskSubmission: item,
+          studentName: item.studentName,
+          studentLocation: item.studentLocation,
+          studentTrustScore: item.studentTrustScore,
+          studentSkills: item.studentSkills,
+          studentSkillsByLevel: item.studentSkillsByLevel,
+          studentStreak: item.studentStreak,
+          studentGithub: item.studentGithub,
+          studentContactInfo: item.studentContactInfo,
+          studentProjects: item.studentProjects,
+          studentVideoUrl: item.studentVideoUrl,
+        }))
+
+      return [...submissionOnlyApplicants, ...mergedApplicants]
+    },
+    [localState.applicantsByGig, selectedGig, selectedGigId, taskSubmissions],
   )
 
   const createGig = data => {
@@ -802,6 +963,7 @@ export default function GigManagement({ gigManagementState, onSaveState }) {
       <ApplicantProfileModal
         applicant={selectedApplicant}
         onClose={() => setSelectedApplicant(null)}
+        onReviewSubmission={onReviewTaskSubmission}
       />
       <CreateGigModal
         open={isCreateGigOpen || Boolean(editingGig)}

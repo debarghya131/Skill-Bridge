@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import CompanyTaskpage from './ComanyTaskpage'
 
@@ -14,8 +14,16 @@ const INTEGRITY_GUIDELINES = [
 export default function Taskpage() {
   const navigate = useNavigate()
   const { state } = useLocation()
-  const opportunity = state?.opportunity
-  const isCompanyInterviewTask = state?.taskType === 'company-interview' && opportunity
+  const storedOpportunity = useMemo(() => {
+    try {
+      const raw = window.sessionStorage.getItem('skillbridge.student.companyTask')
+      return raw ? JSON.parse(raw) : null
+    } catch (error) {
+      return null
+    }
+  }, [])
+  const opportunity = state?.opportunity || storedOpportunity
+  const isCompanyInterviewTask = Boolean(opportunity) && (state?.taskType === 'company-interview' || Boolean(storedOpportunity))
   const [showIntegrityWarning, setShowIntegrityWarning] = useState(Boolean(state?.showIntegrityWarning))
 
   const skillName = state?.skillName || 'Skill'
@@ -117,6 +125,18 @@ export default function Taskpage() {
   useEffect(() => {
     setShowIntegrityWarning(Boolean(state?.showIntegrityWarning))
   }, [state?.showIntegrityWarning])
+
+  useEffect(() => {
+    if (!state?.opportunity) {
+      return
+    }
+
+    try {
+      window.sessionStorage.setItem('skillbridge.student.companyTask', JSON.stringify(state.opportunity))
+    } catch (error) {
+      // Ignore storage issues so the task page still works in restricted browsers.
+    }
+  }, [state?.opportunity])
 
   const integrityModal = showIntegrityWarning ? (
     <div className="responsive-modal-shell" style={{

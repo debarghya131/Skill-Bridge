@@ -142,24 +142,23 @@ const suggestedConnections = [
 const getProjectLink = (project, index) => project.link?.trim() || `https://github.com/topics/project-${index + 1}`
 const getProjectDemoLink = (project, index) => project.demoLink?.trim() || getProjectLink(project, index)
 
-function RequestButton({ kind, active, sentLabel, idleLabel, onClick, fullWidth }) {
+function RequestButton({ kind, active, sentLabel, idleLabel, onClick, onCancel, fullWidth }) {
   const className = active ? 'btn-secondary' : kind === 'teamup' ? 'btn-secondary' : 'btn-primary'
 
   return (
     <button
       className={className}
-      onClick={onClick}
-      disabled={active}
+      onClick={active ? onCancel : onClick}
       style={{
         width: fullWidth ? '100%' : 'auto',
         justifyContent: 'center',
         padding: '8px 12px',
         fontSize: 12,
-        opacity: active ? 0.72 : 1,
-        cursor: active ? 'default' : 'pointer',
+        opacity: active ? 0.82 : 1,
+        cursor: 'pointer',
       }}
     >
-      {active ? sentLabel : idleLabel}
+      {active ? `Cancel ${sentLabel}` : idleLabel}
     </button>
   )
 }
@@ -206,7 +205,7 @@ function getSkillLevel(person, skill) {
   return null
 }
 
-function ProfileModal({ person, connectSent, teamUpSent, onClose, onConnect, onTeamUp }) {
+function ProfileModal({ person, connectSent, teamUpSent, onClose, onConnect, onCancelConnect, onTeamUp, onCancelTeamUp }) {
   const videoRef = useRef(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [levelFilter, setLevelFilter] = useState('All')
@@ -459,8 +458,8 @@ function ProfileModal({ person, connectSent, teamUpSent, onClose, onConnect, onT
           </div>
 
           <div className="responsive-stack" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <RequestButton kind="connect" active={connectSent} sentLabel="Connection Requested" idleLabel="Send Connect Request" onClick={onConnect} />
-            <RequestButton kind="teamup" active={teamUpSent} sentLabel="Team-Up Requested" idleLabel="Send Team-Up Request" onClick={onTeamUp} />
+            <RequestButton kind="connect" active={connectSent} sentLabel="Request" idleLabel="Send Connect Request" onClick={onConnect} onCancel={onCancelConnect} />
+            <RequestButton kind="teamup" active={teamUpSent} sentLabel="Team-Up" idleLabel="Send Team-Up Request" onClick={onTeamUp} onCancel={onCancelTeamUp} />
           </div>
         </div>
       </div>
@@ -486,6 +485,16 @@ export default function NetworkHome() {
     }))
   }
 
+  const cancelConnectRequest = id => {
+    setNetworkState(current => ({
+      ...current,
+      home: {
+        ...current.home,
+        connectRequests: current.home.connectRequests.filter(item => item !== id),
+      },
+    }))
+  }
+
   const sendTeamUpRequest = id => {
     setNetworkState(current => ({
       ...current,
@@ -494,6 +503,16 @@ export default function NetworkHome() {
         teamUpRequests: current.home.teamUpRequests.includes(id)
           ? current.home.teamUpRequests
           : [...current.home.teamUpRequests, id],
+      },
+    }))
+  }
+
+  const cancelTeamUpRequest = id => {
+    setNetworkState(current => ({
+      ...current,
+      home: {
+        ...current.home,
+        teamUpRequests: current.home.teamUpRequests.filter(item => item !== id),
       },
     }))
   }
@@ -543,10 +562,26 @@ export default function NetworkHome() {
                 >
                   View Profile
                 </button>
-                <RequestButton kind="connect" active={connectSent} sentLabel="Requested" idleLabel="Connect" onClick={() => sendConnectRequest(person.id)} fullWidth />
+                <RequestButton
+                  kind="connect"
+                  active={connectSent}
+                  sentLabel="Request"
+                  idleLabel="Connect"
+                  onClick={() => sendConnectRequest(person.id)}
+                  onCancel={() => cancelConnectRequest(person.id)}
+                  fullWidth
+                />
               </div>
 
-              <RequestButton kind="teamup" active={teamUpSent} sentLabel="Team-Up Sent" idleLabel="Send Team-Up" onClick={() => sendTeamUpRequest(person.id)} fullWidth />
+              <RequestButton
+                kind="teamup"
+                active={teamUpSent}
+                sentLabel="Team-Up"
+                idleLabel="Send Team-Up"
+                onClick={() => sendTeamUpRequest(person.id)}
+                onCancel={() => cancelTeamUpRequest(person.id)}
+                fullWidth
+              />
             </div>
           )
         })}
@@ -558,7 +593,9 @@ export default function NetworkHome() {
         teamUpSent={selectedProfile ? teamUpRequests.includes(selectedProfile.id) : false}
         onClose={() => setSelectedProfile(null)}
         onConnect={() => selectedProfile && sendConnectRequest(selectedProfile.id)}
+        onCancelConnect={() => selectedProfile && cancelConnectRequest(selectedProfile.id)}
         onTeamUp={() => selectedProfile && sendTeamUpRequest(selectedProfile.id)}
+        onCancelTeamUp={() => selectedProfile && cancelTeamUpRequest(selectedProfile.id)}
       />
     </div>
   )

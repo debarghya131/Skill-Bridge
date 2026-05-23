@@ -7,12 +7,14 @@ import {
 } from './companyDemoData'
 import {
   clearCompanySessionToken,
+  fetchCompanyTaskSubmissions,
   fetchCurrentCompany,
   getCompanySessionToken,
   fetchCompanyTalent,
   fetchCompanyPayment,
   fetchCompanyWorkspace,
   logoutCompany,
+  reviewCompanyTaskSubmission,
   saveCompanyGigManagement,
   saveCompanyPayment,
   saveCompanyProfile,
@@ -323,6 +325,7 @@ export default function CompanyDashboard() {
   const [paymentState, setPaymentState] = useState(() => mergeCompanyPaymentState(initialCompany.paymentState || buildDefaultCompanyPaymentState()))
   const [projectWorkspaceState, setProjectWorkspaceState] = useState(() => mergeCompanyWorkspaceState(initialCompany.projectWorkspaceState || buildDefaultCompanyWorkspaceState()))
   const [talentProfiles, setTalentProfiles] = useState(() => DEMO_TALENT_PROFILES)
+  const [taskSubmissions, setTaskSubmissions] = useState([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const availableLocations = ['All', ...new Set(talentProfiles.map(profile => profile.location))]
@@ -410,6 +413,34 @@ export default function CompanyDashboard() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadTaskSubmissions() {
+      if (!sessionTokenRef.current || active !== 'gig') {
+        return
+      }
+
+      try {
+        const result = await fetchCompanyTaskSubmissions(sessionTokenRef.current)
+
+        if (!cancelled) {
+          setTaskSubmissions(Array.isArray(result.taskSubmissions) ? result.taskSubmissions : [])
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setTaskSubmissions([])
+        }
+      }
+    }
+
+    loadTaskSubmissions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [active])
 
   useEffect(() => {
     let cancelled = false
@@ -567,6 +598,23 @@ export default function CompanyDashboard() {
     }
 
     navigate('/')
+  }
+
+  const handleReviewTaskSubmission = async (submissionId, payload) => {
+    const token = sessionTokenRef.current
+
+    if (!token) {
+      throw new Error('Sign in again to review submissions.')
+    }
+
+    const result = await reviewCompanyTaskSubmission(token, submissionId, payload)
+    const reviewedSubmission = result.taskSubmission
+
+    setTaskSubmissions(current => current.map(item => (
+      item.id === reviewedSubmission.id ? reviewedSubmission : item
+    )))
+
+    return reviewedSubmission
   }
 
   return (
@@ -926,7 +974,14 @@ export default function CompanyDashboard() {
             <SetupBusinessProfile profile={businessProfile} onSave={setBusinessProfile} />
           )}
 
-          {active === 'gig'       && <GigManagement gigManagementState={gigManagementState} onSaveState={setGigManagementState} />}
+          {active === 'gig'       && (
+            <GigManagement
+              gigManagementState={gigManagementState}
+              onSaveState={setGigManagementState}
+              taskSubmissions={taskSubmissions}
+              onReviewTaskSubmission={handleReviewTaskSubmission}
+            />
+          )}
           {active === 'workspace' && <ProjectWorkspace projectWorkspaceState={projectWorkspaceState} onSaveState={setProjectWorkspaceState} />}
           {active === 'payment'   && <PaymentSection paymentState={paymentState} onSaveState={setPaymentState} />}
 

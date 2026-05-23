@@ -1,5 +1,6 @@
 const Student = require('../models/Student')
 const { buildDefaultGigState } = require('../config/gigDefaults')
+const { reduceTemplateState } = require('../utils/templateState')
 
 function buildAuthError(message, statusCode = 400) {
   const error = new Error(message)
@@ -21,135 +22,153 @@ async function findStudentByToken(token) {
   return student
 }
 
-function ensureGigState(student) {
-  if (!student.gigState) {
-    student.gigState = buildDefaultGigState()
-  }
+function buildGigState(student) {
+  const defaults = buildDefaultGigState()
+  const savedGigIds = Array.isArray(student.gigState?.savedGigIds)
+    ? student.gigState.savedGigIds.map(Number).filter(Number.isFinite)
+    : defaults.savedGigIds
+  const appliedGigIds = Array.isArray(student.gigState?.appliedGigIds)
+    ? student.gigState.appliedGigIds.map(Number).filter(Number.isFinite)
+    : defaults.appliedGigIds
+  const legacyStatuses = Array.isArray(student.gigState?.opportunities)
+    ? student.gigState.opportunities.reduce((acc, item) => {
+      if (item && Number.isFinite(Number(item.id)) && typeof item.status === 'string') {
+        acc[item.id] = item.status
+      }
+      return acc
+    }, {})
+    : {}
+  const statusOverrides = student.gigState?.opportunityStatusById && typeof student.gigState.opportunityStatusById === 'object'
+    ? { ...legacyStatuses, ...student.gigState.opportunityStatusById }
+    : legacyStatuses
 
-  if (!Array.isArray(student.gigState.opportunities) || student.gigState.opportunities.length === 0) {
-    student.gigState.opportunities = buildDefaultGigState().opportunities
-  }
+  const opportunities = defaults.opportunities.map(item => ({
+    ...item,
+    status: typeof statusOverrides[item.id] === 'string' ? statusOverrides[item.id] : item.status,
+  }))
 
-  if (!Array.isArray(student.gigState.browseGigs) || student.gigState.browseGigs.length === 0) {
-    student.gigState.browseGigs = buildDefaultGigState().browseGigs
-  }
-
-  if (!Array.isArray(student.gigState.savedGigIds)) {
-    student.gigState.savedGigIds = buildDefaultGigState().savedGigIds
-  }
-
-  if (!Array.isArray(student.gigState.appliedGigIds)) {
-    student.gigState.appliedGigIds = buildDefaultGigState().appliedGigIds
-  }
-
-  if (!Array.isArray(student.gigState.activeGigBase) || student.gigState.activeGigBase.length === 0) {
-    student.gigState.activeGigBase = buildDefaultGigState().activeGigBase
-  }
-
-  if (!Array.isArray(student.gigState.completedGigs) || student.gigState.completedGigs.length === 0) {
-    student.gigState.completedGigs = buildDefaultGigState().completedGigs
+  return {
+    opportunities,
+    browseGigs: defaults.browseGigs,
+    savedGigIds,
+    appliedGigIds,
+    activeGigBase: defaults.activeGigBase,
+    completedGigs: defaults.completedGigs,
   }
 }
 
-function sanitizeGigState(student) {
-  ensureGigState(student)
+function persistGigState(student, gigState) {
+  const defaults = buildDefaultGigState()
+  const opportunityStatusById = gigState.opportunities.reduce((acc, item, index) => {
+    const defaultStatus = defaults.opportunities[index]?.status
+    if (item.status && item.status !== defaultStatus) {
+      acc[item.id] = item.status
+    }
+    return acc
+  }, {})
 
-  return {
-    opportunities: student.gigState.opportunities,
-    browseGigs: student.gigState.browseGigs,
-    savedGigIds: student.gigState.savedGigIds,
-    appliedGigIds: student.gigState.appliedGigIds,
-    activeGigBase: student.gigState.activeGigBase,
-    completedGigs: student.gigState.completedGigs,
+  const nextState = {
+    savedGigIds: gigState.savedGigIds,
+    appliedGigIds: gigState.appliedGigIds,
+    opportunityStatusById,
   }
+
+  student.gigState = reduceTemplateState(nextState, {
+    savedGigIds: defaults.savedGigIds,
+    appliedGigIds: defaults.appliedGigIds,
+    opportunityStatusById: {},
+  })
 }
 
 async function getStudentGigState(token) {
   const student = await findStudentByToken(token)
-  ensureGigState(student)
-  await student.save()
-  return sanitizeGigState(student)
+  return buildGigState(student)
 }
 
 async function applyToGig(token, gigId) {
   const student = await findStudentByToken(token)
-  ensureGigState(student)
+  const gigState = buildGigState(student)
 
   const numericGigId = Number(gigId)
-  const gigExists = student.gigState.browseGigs.some(gig => gig.id === numericGigId)
+  const gigExists = gigState.browseGigs.some(gig => gig.id === numericGigId)
 
   if (!gigExists) {
     throw buildAuthError('GIG not found', 404)
   }
 
-  if (!student.gigState.appliedGigIds.includes(numericGigId)) {
-    student.gigState.appliedGigIds.push(numericGigId)
+  if (!gigState.appliedGigIds.includes(numericGigId)) {
+    gigState.appliedGigIds.push(numericGigId)
   }
 
+  persistGigState(student, gigState)
   await student.save()
-  return sanitizeGigState(student)
+  return gigState
 }
 
 async function saveGig(token, gigId) {
   const student = await findStudentByToken(token)
-  ensureGigState(student)
+  const gigState = buildGigState(student)
 
   const numericGigId = Number(gigId)
-  const gigExists = student.gigState.browseGigs.some(gig => gig.id === numericGigId)
+  const gigExists = gigState.browseGigs.some(gig => gig.id === numericGigId)
 
   if (!gigExists) {
     throw buildAuthError('GIG not found', 404)
   }
 
-  if (!student.gigState.savedGigIds.includes(numericGigId)) {
-    student.gigState.savedGigIds.push(numericGigId)
+  if (!gigState.savedGigIds.includes(numericGigId)) {
+    gigState.savedGigIds.push(numericGigId)
   }
 
+  persistGigState(student, gigState)
   await student.save()
-  return sanitizeGigState(student)
+  return gigState
 }
 
 async function unsaveGig(token, gigId) {
   const student = await findStudentByToken(token)
-  ensureGigState(student)
+  const gigState = buildGigState(student)
 
   const numericGigId = Number(gigId)
-  student.gigState.savedGigIds = student.gigState.savedGigIds.filter(id => id !== numericGigId)
+  gigState.savedGigIds = gigState.savedGigIds.filter(id => id !== numericGigId)
 
+  persistGigState(student, gigState)
   await student.save()
-  return sanitizeGigState(student)
+  return gigState
 }
 
 async function acceptOpportunity(token, opportunityId) {
   const student = await findStudentByToken(token)
-  ensureGigState(student)
+  const gigState = buildGigState(student)
 
   const numericOpportunityId = Number(opportunityId)
-  const opportunity = student.gigState.opportunities.find(item => item.id === numericOpportunityId)
+  const opportunity = gigState.opportunities.find(item => item.id === numericOpportunityId)
 
   if (!opportunity) {
     throw buildAuthError('Opportunity not found', 404)
   }
 
   opportunity.status = 'accepted'
+  persistGigState(student, gigState)
   await student.save()
-  return sanitizeGigState(student)
+  return gigState
 }
 
 async function declineOpportunity(token, opportunityId) {
   const student = await findStudentByToken(token)
-  ensureGigState(student)
+  const gigState = buildGigState(student)
 
   const numericOpportunityId = Number(opportunityId)
-  const opportunity = student.gigState.opportunities.find(item => item.id === numericOpportunityId)
+  const opportunity = gigState.opportunities.find(item => item.id === numericOpportunityId)
 
   if (!opportunity) {
     throw buildAuthError('Opportunity not found', 404)
   }
 
   opportunity.status = 'declined'
+  persistGigState(student, gigState)
   await student.save()
-  return sanitizeGigState(student)
+  return gigState
 }
 
 module.exports = {

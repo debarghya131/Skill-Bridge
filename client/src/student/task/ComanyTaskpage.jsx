@@ -1,4 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import {
+  fetchStudentCompanyInterviewTask,
+  getStudentSessionToken,
+  submitStudentCompanyInterviewTask,
+} from '../studentApi'
 
 const TASK_STAGES = [
   { key: 'brief', label: 'Brief', icon: '📋' },
@@ -11,6 +16,65 @@ export default function CompanyTaskpage({ opportunity }) {
   const [submissionLink, setSubmissionLink] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [note, setNote] = useState('')
+  const [submissionStatus, setSubmissionStatus] = useState('submitted')
+  const [feedback, setFeedback] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [submissionNotice, setSubmissionNotice] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    const token = getStudentSessionToken()
+
+    setSubmissionLink('')
+    setSubmitted(false)
+    setNote('')
+    setSubmissionStatus('submitted')
+    setFeedback('')
+    setSubmitError('')
+    setSubmissionNotice('')
+
+    if (!opportunity || !token) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    async function loadSubmission() {
+      setIsLoading(true)
+
+      try {
+        const result = await fetchStudentCompanyInterviewTask(token, {
+          opportunityId: opportunity.id,
+          gigTitle: opportunity.title,
+        })
+
+        if (cancelled || !result.taskSubmission) {
+          return
+        }
+
+        setSubmissionLink(result.taskSubmission.submissionLink || '')
+        setNote(result.taskSubmission.note || '')
+        setSubmitted(true)
+        setSubmissionStatus(result.taskSubmission.status || 'submitted')
+        setFeedback(result.taskSubmission.feedback || '')
+      } catch (error) {
+        if (!cancelled) {
+          setSubmitError(error.message || 'Could not load your previous submission.')
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadSubmission()
+
+    return () => {
+      cancelled = true
+    }
+  }, [opportunity])
 
   if (!opportunity) {
     return (
@@ -27,6 +91,79 @@ export default function CompanyTaskpage({ opportunity }) {
     { id: 3, title: `Write a brief on your ${opportunity.matchedSkills[1] || opportunity.matchedSkills[0]} experience`, desc: 'Write 150–200 words about a real project or situation where you applied this skill.', points: 20, required: false },
     { id: 4, title: 'Share portfolio or relevant links', desc: 'Provide links to your GitHub, portfolio, or any relevant work that demonstrates your abilities.', points: 10, required: false },
   ]
+
+  const statusMeta = {
+    submitted: {
+      badge: 'Submitted',
+      bg: '#EDE9FE',
+      color: '#6D28D9',
+      title: 'Submission Received!',
+      copy: `${opportunity.company} has been notified. Expect a response within 5–7 business days.`,
+    },
+    reviewed: {
+      badge: 'Reviewed',
+      bg: '#DBEAFE',
+      color: '#1D4ED8',
+      title: 'Company Review Added',
+      copy: `${opportunity.company} reviewed your task. Check the feedback tab for their notes.`,
+    },
+    ready_to_hire: {
+      badge: 'Ready to Hire',
+      bg: '#D1FAE5',
+      color: '#065F46',
+      title: 'You Moved Forward',
+      copy: `${opportunity.company} marked this submission as ready to hire.`,
+    },
+    needs_revision: {
+      badge: 'Needs Revision',
+      bg: '#FEF3C7',
+      color: '#92400E',
+      title: 'Revision Requested',
+      copy: `${opportunity.company} asked for an updated submission. Review the feedback and resubmit.`,
+    },
+  }
+
+  const currentStatusMeta = statusMeta[submissionStatus] || statusMeta.submitted
+  const handleSubmit = async () => {
+    if (!submissionLink.trim()) {
+      return
+    }
+
+    const token = getStudentSessionToken()
+    setSubmitError('')
+    setSubmissionNotice('')
+
+    if (!token) {
+      setSubmitted(true)
+      setSubmissionStatus('submitted')
+      setFeedback('')
+      setSubmissionNotice('Saved in demo mode. Sign in to make this submission visible to the company.')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const result = await submitStudentCompanyInterviewTask(token, {
+        opportunityId: opportunity.id,
+        gigTitle: opportunity.title,
+        companyName: opportunity.company,
+        companyLocation: opportunity.location,
+        matchedSkills: opportunity.matchedSkills,
+        submissionLink,
+        note,
+      })
+
+      setSubmitted(true)
+      setSubmissionStatus(result.taskSubmission?.status || 'submitted')
+      setFeedback(result.taskSubmission?.feedback || '')
+      setSubmissionNotice('Your submission is now linked to the company review queue.')
+    } catch (error) {
+      setSubmitError(error.message || 'Could not submit your work right now.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div>
@@ -114,18 +251,42 @@ export default function CompanyTaskpage({ opportunity }) {
       {/* Submission tab */}
       {stage === 'submission' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {isLoading && (
+            <div style={{
+              background: '#EFF6FF',
+              border: '1px solid #BFDBFE',
+              borderRadius: 12,
+              padding: '12px 16px',
+              fontSize: 13,
+              color: '#1D4ED8',
+              fontWeight: 700,
+            }}>
+              Loading task submission...
+            </div>
+          )}
           {submitted ? (
             <div style={{
-              background: '#F0FDF4', border: '1.5px solid #10B981', borderRadius: 14,
+              background: currentStatusMeta.bg, border: `1.5px solid ${currentStatusMeta.color}`, borderRadius: 14,
               padding: '32px 24px', textAlign: 'center',
             }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: '#065F46', marginBottom: 6 }}>Submission Received!</div>
-              <div style={{ fontSize: 13, color: '#166534', marginBottom: 16 }}>
-                {opportunity.company} has been notified. Expect a response within 5–7 business days.
+              <div style={{ fontSize: 17, fontWeight: 800, color: currentStatusMeta.color, marginBottom: 6 }}>{currentStatusMeta.title}</div>
+              <div style={{ fontSize: 13, color: currentStatusMeta.color, marginBottom: 10 }}>
+                {currentStatusMeta.copy}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, background: 'white', color: currentStatusMeta.color, borderRadius: 100, display: 'inline-block', padding: '4px 10px', border: `1px solid ${currentStatusMeta.color}`, marginBottom: 16 }}>
+                {currentStatusMeta.badge}
               </div>
               <div style={{ fontSize: 12, color: 'var(--muted)', background: 'white', borderRadius: 8, padding: '8px 14px', display: 'inline-block', border: '1px solid var(--border)' }}>
                 🔗 {submissionLink}
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <button
+                  onClick={() => setSubmitted(false)}
+                  style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'white', color: 'var(--text)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                >
+                  {submissionStatus === 'needs_revision' ? 'Update Submission' : 'Edit Submission'}
+                </button>
               </div>
             </div>
           ) : (
@@ -157,12 +318,22 @@ export default function CompanyTaskpage({ opportunity }) {
                     />
                   </div>
                   <button
-                    onClick={() => { if (submissionLink.trim()) setSubmitted(true) }}
+                    onClick={handleSubmit}
                     className="btn-primary"
-                    style={{ padding: '10px 24px', fontSize: 14, alignSelf: 'flex-start', opacity: submissionLink.trim() ? 1 : 0.5 }}
+                    style={{ padding: '10px 24px', fontSize: 14, alignSelf: 'flex-start', opacity: submissionLink.trim() && !isLoading ? 1 : 0.5 }}
                   >
-                    Submit Work →
+                    {isLoading ? 'Submitting...' : 'Submit Work →'}
                   </button>
+                  {submitError && (
+                    <div style={{ fontSize: 12, color: '#B91C1C', fontWeight: 700 }}>
+                      {submitError}
+                    </div>
+                  )}
+                  {submissionNotice && (
+                    <div style={{ fontSize: 12, color: '#166534', fontWeight: 700 }}>
+                      {submissionNotice}
+                    </div>
+                  )}
                 </div>
               </div>
             </>
@@ -172,14 +343,47 @@ export default function CompanyTaskpage({ opportunity }) {
 
       {/* Feedback tab */}
       {stage === 'feedback' && (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          height: '40vh', gap: 14, color: 'var(--muted)',
-        }}>
-          <div style={{ fontSize: 40 }}>💬</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--dark)' }}>Waiting for company feedback</div>
-          <div style={{ fontSize: 13 }}>Once {opportunity.company} reviews your submission, feedback will appear here.</div>
-        </div>
+        submitted ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{
+              background: currentStatusMeta.bg,
+              border: `1px solid ${currentStatusMeta.color}`,
+              borderRadius: 12,
+              padding: '16px 18px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: currentStatusMeta.color }}>{currentStatusMeta.badge}</div>
+                <span style={{ fontSize: 11, fontWeight: 700, background: 'white', color: currentStatusMeta.color, padding: '3px 8px', borderRadius: 100, border: `1px solid ${currentStatusMeta.color}` }}>
+                  Shared with {opportunity.company}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: currentStatusMeta.color, lineHeight: 1.6 }}>
+                {feedback || `Once ${opportunity.company} reviews your work, their feedback will appear here.`}
+              </div>
+            </div>
+
+            <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)', padding: '18px 20px' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)', marginBottom: 10 }}>Latest submission</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Link</div>
+              <div style={{ fontSize: 13, color: 'var(--dark)', fontWeight: 600, marginBottom: 14, wordBreak: 'break-word' }}>{submissionLink}</div>
+              {note && (
+                <>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Your note</div>
+                  <div style={{ fontSize: 13, color: 'var(--dark)', lineHeight: 1.6 }}>{note}</div>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            height: '40vh', gap: 14, color: 'var(--muted)',
+          }}>
+            <div style={{ fontSize: 40 }}>💬</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--dark)' }}>Submit your task first</div>
+            <div style={{ fontSize: 13 }}>Once your work is submitted, company feedback will appear here.</div>
+          </div>
+        )
       )}
     </div>
   )

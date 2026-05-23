@@ -8,6 +8,7 @@ const {
   buildDefaultCompanyWorkspaceState,
 } = require('../config/companyDefaults')
 const { createSessionToken, hashPassword, verifyPassword } = require('../utils/auth')
+const { clone, mergeTemplateState, reduceTemplateState } = require('../utils/templateState')
 
 function normalizeEmail(email) {
   return email?.trim().toLowerCase() || ''
@@ -39,54 +40,54 @@ function sanitizeCompanyProfile(profile, fallback) {
   }
 }
 
-function clone(value) {
-  return JSON.parse(JSON.stringify(value))
-}
-
 function sanitizeDashboardState(state) {
   const fallback = buildDefaultCompanyDashboardState()
+  const mergedState = mergeTemplateState(fallback, state)
 
   return {
-    stats: Array.isArray(state?.stats) ? clone(state.stats) : fallback.stats,
-    matchedStudents: Number(state?.matchedStudents) || fallback.matchedStudents,
-    recentHiringActivity: Array.isArray(state?.recentHiringActivity)
-      ? clone(state.recentHiringActivity)
+    stats: Array.isArray(mergedState?.stats) ? clone(mergedState.stats) : fallback.stats,
+    matchedStudents: Number(mergedState?.matchedStudents) || fallback.matchedStudents,
+    recentHiringActivity: Array.isArray(mergedState?.recentHiringActivity)
+      ? clone(mergedState.recentHiringActivity)
       : fallback.recentHiringActivity,
   }
 }
 
 function sanitizeGigManagementState(state) {
   const fallback = buildDefaultCompanyGigManagementState()
+  const mergedState = mergeTemplateState(fallback, state)
 
   return {
-    stats: Array.isArray(state?.stats) ? clone(state.stats) : fallback.stats,
-    gigs: Array.isArray(state?.gigs) ? clone(state.gigs) : fallback.gigs,
-    pipeline: Array.isArray(state?.pipeline) ? clone(state.pipeline) : fallback.pipeline,
-    recentActivity: Array.isArray(state?.recentActivity) ? clone(state.recentActivity) : fallback.recentActivity,
-    applicantsByGig: state?.applicantsByGig && typeof state.applicantsByGig === 'object'
-      ? clone(state.applicantsByGig)
+    stats: Array.isArray(mergedState?.stats) ? clone(mergedState.stats) : fallback.stats,
+    gigs: Array.isArray(mergedState?.gigs) ? clone(mergedState.gigs) : fallback.gigs,
+    pipeline: Array.isArray(mergedState?.pipeline) ? clone(mergedState.pipeline) : fallback.pipeline,
+    recentActivity: Array.isArray(mergedState?.recentActivity) ? clone(mergedState.recentActivity) : fallback.recentActivity,
+    applicantsByGig: mergedState?.applicantsByGig && typeof mergedState.applicantsByGig === 'object'
+      ? clone(mergedState.applicantsByGig)
       : fallback.applicantsByGig,
   }
 }
 
 function sanitizeProjectWorkspaceState(state) {
   const fallback = buildDefaultCompanyWorkspaceState()
+  const mergedState = mergeTemplateState(fallback, state)
 
   return {
-    projects: Array.isArray(state?.projects) ? clone(state.projects) : fallback.projects,
-    selectedProjectId: typeof state?.selectedProjectId === 'string' ? state.selectedProjectId : fallback.selectedProjectId,
-    statusFilter: typeof state?.statusFilter === 'string' ? state.statusFilter : fallback.statusFilter,
+    projects: Array.isArray(mergedState?.projects) ? clone(mergedState.projects) : fallback.projects,
+    selectedProjectId: typeof mergedState?.selectedProjectId === 'string' ? mergedState.selectedProjectId : fallback.selectedProjectId,
+    statusFilter: typeof mergedState?.statusFilter === 'string' ? mergedState.statusFilter : fallback.statusFilter,
   }
 }
 
 function sanitizePaymentState(state) {
   const fallback = buildDefaultCompanyPaymentState()
+  const mergedState = mergeTemplateState(fallback, state)
 
   return {
-    summary: Array.isArray(state?.summary) ? clone(state.summary) : fallback.summary,
-    methods: Array.isArray(state?.methods) ? clone(state.methods) : fallback.methods,
-    transactions: Array.isArray(state?.transactions) ? clone(state.transactions) : fallback.transactions,
-    recommendedActions: Array.isArray(state?.recommendedActions) ? clone(state.recommendedActions) : fallback.recommendedActions,
+    summary: Array.isArray(mergedState?.summary) ? clone(mergedState.summary) : fallback.summary,
+    methods: Array.isArray(mergedState?.methods) ? clone(mergedState.methods) : fallback.methods,
+    transactions: Array.isArray(mergedState?.transactions) ? clone(mergedState.transactions) : fallback.transactions,
+    recommendedActions: Array.isArray(mergedState?.recommendedActions) ? clone(mergedState.recommendedActions) : fallback.recommendedActions,
   }
 }
 
@@ -235,10 +236,6 @@ async function signUpCompany(payload) {
     businessDoc: verificationMethod === 'udyam' ? payload.businessDoc.trim() : '',
     location,
     businessProfile: buildDefaultCompanyProfile({ businessName, location }),
-    dashboardState: buildDefaultCompanyDashboardState(),
-    gigManagementState: buildDefaultCompanyGigManagementState(),
-    projectWorkspaceState: buildDefaultCompanyWorkspaceState(),
-    paymentState: buildDefaultCompanyPaymentState(),
   })
 
   const token = createSessionToken()
@@ -304,19 +301,19 @@ async function updateCurrentCompany(token, payload) {
   }
 
   if (payload.dashboardState) {
-    company.dashboardState = sanitizeDashboardState(payload.dashboardState)
+    company.dashboardState = reduceTemplateState(sanitizeDashboardState(payload.dashboardState), buildDefaultCompanyDashboardState())
   }
 
   if (payload.gigManagementState) {
-    company.gigManagementState = sanitizeGigManagementState(payload.gigManagementState)
+    company.gigManagementState = reduceTemplateState(sanitizeGigManagementState(payload.gigManagementState), buildDefaultCompanyGigManagementState())
   }
 
   if (payload.projectWorkspaceState) {
-    company.projectWorkspaceState = sanitizeProjectWorkspaceState(payload.projectWorkspaceState)
+    company.projectWorkspaceState = reduceTemplateState(sanitizeProjectWorkspaceState(payload.projectWorkspaceState), buildDefaultCompanyWorkspaceState())
   }
 
   if (payload.paymentState) {
-    company.paymentState = sanitizePaymentState(payload.paymentState)
+    company.paymentState = reduceTemplateState(sanitizePaymentState(payload.paymentState), buildDefaultCompanyPaymentState())
   }
 
   await company.save()
@@ -337,9 +334,10 @@ async function getCurrentCompanyGigManagementState(token) {
 
 async function updateCurrentCompanyGigManagementState(token, payload) {
   const company = await findCompanyByToken(token)
-  company.gigManagementState = sanitizeGigManagementState(payload.gigManagementState)
+  const nextState = sanitizeGigManagementState(payload.gigManagementState)
+  company.gigManagementState = reduceTemplateState(nextState, buildDefaultCompanyGigManagementState())
   await company.save()
-  return sanitizeGigManagementState(company.gigManagementState)
+  return nextState
 }
 
 async function getCurrentCompanyProjectWorkspaceState(token) {
@@ -349,9 +347,10 @@ async function getCurrentCompanyProjectWorkspaceState(token) {
 
 async function updateCurrentCompanyProjectWorkspaceState(token, payload) {
   const company = await findCompanyByToken(token)
-  company.projectWorkspaceState = sanitizeProjectWorkspaceState(payload.projectWorkspaceState)
+  const nextState = sanitizeProjectWorkspaceState(payload.projectWorkspaceState)
+  company.projectWorkspaceState = reduceTemplateState(nextState, buildDefaultCompanyWorkspaceState())
   await company.save()
-  return sanitizeProjectWorkspaceState(company.projectWorkspaceState)
+  return nextState
 }
 
 async function getCurrentCompanyPaymentState(token) {
@@ -361,9 +360,10 @@ async function getCurrentCompanyPaymentState(token) {
 
 async function updateCurrentCompanyPaymentState(token, payload) {
   const company = await findCompanyByToken(token)
-  company.paymentState = sanitizePaymentState(payload.paymentState)
+  const nextState = sanitizePaymentState(payload.paymentState)
+  company.paymentState = reduceTemplateState(nextState, buildDefaultCompanyPaymentState())
   await company.save()
-  return sanitizePaymentState(company.paymentState)
+  return nextState
 }
 
 async function getCompanyTalentProfiles(token) {

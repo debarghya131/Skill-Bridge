@@ -203,3 +203,23 @@ export async function declineStudentOpportunity(token, opportunityId) {
     body: JSON.stringify({}),
   })
 }
+
+export async function fetchStudentCompanyInterviewTask(token, payload) {
+  return request('/api/student/tasks/company-interview/load', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function submitStudentCompanyInterviewTask(token, payload) {
+  return request('/api/student/tasks/company-interview/submit', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+}

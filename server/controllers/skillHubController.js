@@ -21,12 +21,6 @@ async function findStudentByToken(token) {
   return student
 }
 
-function ensureSkillHubSkills(student) {
-  if (!Array.isArray(student.skillHubSkills) || student.skillHubSkills.length === 0) {
-    student.skillHubSkills = buildDefaultSkillHubSkills()
-  }
-}
-
 function sanitizeSkill(skill) {
   return {
     name: typeof skill.name === 'string' ? skill.name : '',
@@ -46,33 +40,49 @@ function sanitizeSkill(skill) {
 }
 
 function syncProfileSkills(student) {
-  student.skills = student.skillHubSkills.map(skill => skill.name).filter(Boolean)
+  const mergedSkills = buildStudentSkillHubSkills(student)
+  student.skills = mergedSkills.map(skill => skill.name).filter(Boolean)
+}
+
+function buildStudentSkillHubSkills(student) {
+  const defaults = buildDefaultSkillHubSkills().map(sanitizeSkill)
+  const defaultNames = new Set(defaults.map(skill => skill.name.toLowerCase()))
+  const addedSkills = Array.isArray(student.skillHubSkills)
+    ? student.skillHubSkills
+      .map(sanitizeSkill)
+      .filter(skill => skill.name && !defaultNames.has(skill.name.toLowerCase()))
+    : []
+
+  return [...defaults, ...addedSkills]
 }
 
 async function getStudentSkillHub(token) {
   const student = await findStudentByToken(token)
-  ensureSkillHubSkills(student)
-  syncProfileSkills(student)
+  const mergedSkills = buildStudentSkillHubSkills(student)
+  student.skills = mergedSkills.map(skill => skill.name).filter(Boolean)
   await student.save()
 
   return {
-    skills: student.skillHubSkills.map(sanitizeSkill),
+    skills: mergedSkills,
   }
 }
 
 async function updateStudentSkillHub(token, payload) {
   const student = await findStudentByToken(token)
-  ensureSkillHubSkills(student)
+  const defaults = buildDefaultSkillHubSkills().map(sanitizeSkill)
+  const defaultNames = new Set(defaults.map(skill => skill.name.toLowerCase()))
 
   if (Array.isArray(payload.skills)) {
-    student.skillHubSkills = payload.skills.map(sanitizeSkill)
+    student.skillHubSkills = payload.skills
+      .map(sanitizeSkill)
+      .filter(skill => skill.name && !defaultNames.has(skill.name.toLowerCase()))
   }
 
   syncProfileSkills(student)
   await student.save()
 
   return {
-    skills: student.skillHubSkills.map(sanitizeSkill),
+    skills: buildStudentSkillHubSkills(student),
   }
 }
 

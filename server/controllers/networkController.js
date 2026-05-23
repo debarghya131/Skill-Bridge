@@ -1,14 +1,11 @@
 const Student = require('../models/Student')
 const { buildDefaultNetworkState } = require('../config/networkDefaults')
+const { clone, mergeTemplateState, reduceTemplateState } = require('../utils/templateState')
 
 function buildAuthError(message, statusCode = 400) {
   const error = new Error(message)
   error.statusCode = statusCode
   return error
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value))
 }
 
 async function findStudentByToken(token) {
@@ -39,42 +36,38 @@ function sanitizeList(list, fallback) {
 
 function sanitizeNetworkState(networkState) {
   const fallback = buildDefaultNetworkState()
+  const mergedState = mergeTemplateState(fallback, networkState)
 
   return {
     home: {
-      connectRequests: sanitizeIdList(networkState?.home?.connectRequests, fallback.home.connectRequests),
-      teamUpRequests: sanitizeIdList(networkState?.home?.teamUpRequests, fallback.home.teamUpRequests),
+      connectRequests: sanitizeIdList(mergedState?.home?.connectRequests, fallback.home.connectRequests),
+      teamUpRequests: sanitizeIdList(mergedState?.home?.teamUpRequests, fallback.home.teamUpRequests),
     },
     myNetwork: {
-      people: sanitizeList(networkState?.myNetwork?.people, fallback.myNetwork.people),
-      activity: sanitizeList(networkState?.myNetwork?.activity, fallback.myNetwork.activity),
-      teamUpRequests: sanitizeIdList(networkState?.myNetwork?.teamUpRequests, fallback.myNetwork.teamUpRequests),
+      people: sanitizeList(mergedState?.myNetwork?.people, fallback.myNetwork.people),
+      activity: sanitizeList(mergedState?.myNetwork?.activity, fallback.myNetwork.activity),
+      teamUpRequests: sanitizeIdList(mergedState?.myNetwork?.teamUpRequests, fallback.myNetwork.teamUpRequests),
     },
     teamUp: {
-      myRequests: sanitizeList(networkState?.teamUp?.myRequests, fallback.teamUp.myRequests),
-      incoming: sanitizeList(networkState?.teamUp?.incoming, fallback.teamUp.incoming),
-      accepted: sanitizeList(networkState?.teamUp?.accepted, fallback.teamUp.accepted),
-      sentRequests: sanitizeList(networkState?.teamUp?.sentRequests, fallback.teamUp.sentRequests),
+      myRequests: sanitizeList(mergedState?.teamUp?.myRequests, fallback.teamUp.myRequests),
+      incoming: sanitizeList(mergedState?.teamUp?.incoming, fallback.teamUp.incoming),
+      accepted: sanitizeList(mergedState?.teamUp?.accepted, fallback.teamUp.accepted),
+      sentRequests: sanitizeList(mergedState?.teamUp?.sentRequests, fallback.teamUp.sentRequests),
     },
   }
 }
 
-function ensureNetworkState(student) {
-  student.networkState = sanitizeNetworkState(student.networkState)
-}
-
 async function getStudentNetworkState(token) {
   const student = await findStudentByToken(token)
-  ensureNetworkState(student)
-  await student.save()
-  return student.networkState
+  return sanitizeNetworkState(student.networkState)
 }
 
 async function updateStudentNetworkState(token, payload) {
   const student = await findStudentByToken(token)
-  student.networkState = sanitizeNetworkState(payload.networkState)
+  const nextState = sanitizeNetworkState(payload.networkState)
+  student.networkState = reduceTemplateState(nextState, buildDefaultNetworkState())
   await student.save()
-  return student.networkState
+  return nextState
 }
 
 module.exports = {

@@ -1,14 +1,11 @@
 const Student = require('../models/Student')
 const { buildDefaultEarningState } = require('../config/earningDefaults')
+const { clone, mergeTemplateState, reduceTemplateState } = require('../utils/templateState')
 
 function buildAuthError(message, statusCode = 400) {
   const error = new Error(message)
   error.statusCode = statusCode
   return error
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value))
 }
 
 async function findStudentByToken(token) {
@@ -70,33 +67,29 @@ function sanitizeUpiAccounts(list, fallback) {
 
 function sanitizeEarningState(earningState) {
   const fallback = buildDefaultEarningState()
+  const mergedState = mergeTemplateState(fallback, earningState)
 
   return {
-    walletStats: sanitizeWalletStats(earningState?.walletStats, fallback.walletStats),
-    availableNow: sanitizeString(earningState?.availableNow, fallback.availableNow),
-    paymentHistory: sanitizePaymentHistory(earningState?.paymentHistory, fallback.paymentHistory),
-    upiAccounts: sanitizeUpiAccounts(earningState?.upiAccounts, fallback.upiAccounts),
-    selectedUpi: sanitizeString(earningState?.selectedUpi, fallback.selectedUpi),
-    withdrawAmount: sanitizeString(earningState?.withdrawAmount, fallback.withdrawAmount),
+    walletStats: sanitizeWalletStats(mergedState?.walletStats, fallback.walletStats),
+    availableNow: sanitizeString(mergedState?.availableNow, fallback.availableNow),
+    paymentHistory: sanitizePaymentHistory(mergedState?.paymentHistory, fallback.paymentHistory),
+    upiAccounts: sanitizeUpiAccounts(mergedState?.upiAccounts, fallback.upiAccounts),
+    selectedUpi: sanitizeString(mergedState?.selectedUpi, fallback.selectedUpi),
+    withdrawAmount: sanitizeString(mergedState?.withdrawAmount, fallback.withdrawAmount),
   }
-}
-
-function ensureEarningState(student) {
-  student.earningState = sanitizeEarningState(student.earningState)
 }
 
 async function getStudentEarningState(token) {
   const student = await findStudentByToken(token)
-  ensureEarningState(student)
-  await student.save()
-  return student.earningState
+  return sanitizeEarningState(student.earningState)
 }
 
 async function updateStudentEarningState(token, payload) {
   const student = await findStudentByToken(token)
-  student.earningState = sanitizeEarningState(payload.earningState)
+  const nextState = sanitizeEarningState(payload.earningState)
+  student.earningState = reduceTemplateState(nextState, buildDefaultEarningState())
   await student.save()
-  return student.earningState
+  return nextState
 }
 
 module.exports = {

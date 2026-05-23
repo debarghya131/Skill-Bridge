@@ -35,6 +35,12 @@ const { getStudentEarningState, updateStudentEarningState } = require('./control
 const { getStudentNetworkState, updateStudentNetworkState } = require('./controllers/networkController')
 const { getStudentSkillHub, updateStudentSkillHub } = require('./controllers/skillHubController')
 const { getStudentTrustScore } = require('./controllers/trustScoreController')
+const {
+  getCompanyTaskSubmissions,
+  getStudentCompanyInterviewTask,
+  reviewCompanyTaskSubmission,
+  submitStudentCompanyInterviewTask,
+} = require('./controllers/taskBridgeController')
 const { getBearerToken, readJsonBody } = require('./utils/request')
 
 function loadEnvFile(filePath) {
@@ -148,10 +154,24 @@ async function handleCompanyApi(req, res, pathname) {
       return true
     }
 
+    if (req.method === 'GET' && pathname === '/api/company/tasks/submissions') {
+      const taskSubmissions = await getCompanyTaskSubmissions(getBearerToken(req))
+      sendJson(res, 200, { taskSubmissions })
+      return true
+    }
+
     if (req.method === 'PATCH' && pathname === '/api/company/payment') {
       const payload = await readJsonBody(req)
       const paymentState = await updateCurrentCompanyPaymentState(getBearerToken(req), payload)
       sendJson(res, 200, { paymentState })
+      return true
+    }
+
+    const taskReviewMatch = pathname.match(/^\/api\/company\/tasks\/submissions\/([a-f0-9]+)$/i)
+    if (req.method === 'PATCH' && taskReviewMatch) {
+      const payload = await readJsonBody(req)
+      const taskSubmission = await reviewCompanyTaskSubmission(getBearerToken(req), taskReviewMatch[1], payload)
+      sendJson(res, 200, { taskSubmission })
       return true
     }
 
@@ -254,6 +274,20 @@ async function handleStudentApi(req, res, pathname) {
       const payload = await readJsonBody(req)
       const earningState = await updateStudentEarningState(getBearerToken(req), payload)
       sendJson(res, 200, { earningState })
+      return true
+    }
+
+    if (req.method === 'POST' && pathname === '/api/student/tasks/company-interview/load') {
+      const payload = await readJsonBody(req)
+      const taskSubmission = await getStudentCompanyInterviewTask(getBearerToken(req), payload)
+      sendJson(res, 200, { taskSubmission })
+      return true
+    }
+
+    if (req.method === 'POST' && pathname === '/api/student/tasks/company-interview/submit') {
+      const payload = await readJsonBody(req)
+      const taskSubmission = await submitStudentCompanyInterviewTask(getBearerToken(req), payload)
+      sendJson(res, 200, { taskSubmission })
       return true
     }
 
