@@ -141,7 +141,6 @@ export default function SkillGapReport() {
             {filtered.map(item => {
               const gc = gapColor[item.gap]
               const isExpanded = expandedSkill === item.skill
-              const barFill = Math.round((item.yours / item.demand) * 100)
 
               return (
                 <div key={item.skill} style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px 14px', border: `1px solid ${item.gap === 'High' ? '#FECACA' : 'var(--border)'}`, cursor: 'pointer' }}

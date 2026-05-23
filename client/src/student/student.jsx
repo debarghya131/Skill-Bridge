@@ -812,7 +812,7 @@ export default function StudentDashboard() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [navigate])
 
   useEffect(() => {
     if (!sessionTokenRef.current || !didHydrateRef.current) {

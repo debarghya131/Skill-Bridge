@@ -332,7 +332,7 @@ function ApplicantsModal({ gig, applicants, onClose, onViewProfile }) {
   )
 }
 
-function ApplicantProfileModal({ applicant, onClose, onReviewSubmission }) {
+function ApplicantProfileModal({ applicant, onClose, onReviewSubmission, onReviewSaved }) {
   const videoRef = useRef(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [levelFilter, setLevelFilter] = useState('All')
@@ -381,7 +381,7 @@ function ApplicantProfileModal({ applicant, onClose, onReviewSubmission }) {
         feedback: feedbackNote,
       })
 
-      applicant.taskSubmission = reviewedSubmission
+      onReviewSaved?.(reviewedSubmission)
     } catch (error) {
       setReviewError(error.message || 'Could not save review right now.')
     } finally {
@@ -964,6 +964,11 @@ export default function GigManagement({ gigManagementState, onSaveState, taskSub
         applicant={selectedApplicant}
         onClose={() => setSelectedApplicant(null)}
         onReviewSubmission={onReviewTaskSubmission}
+        onReviewSaved={(reviewedSubmission) => {
+          setSelectedApplicant(current => (
+            current ? { ...current, taskSubmission: reviewedSubmission } : current
+          ))
+        }}
       />
       <CreateGigModal
         open={isCreateGigOpen || Boolean(editingGig)}

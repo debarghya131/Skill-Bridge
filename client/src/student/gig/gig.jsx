@@ -133,12 +133,12 @@ export default function GigCenter() {
     }
   }, [sessionToken])
 
-  const browseGigs = gigState.browseGigs || []
-  const opportunities = gigState.opportunities || []
-  const savedGigIds = gigState.savedGigIds || []
-  const appliedGigIds = gigState.appliedGigIds || []
-  const completedGigs = gigState.completedGigs || []
-  const activeGigBase = gigState.activeGigBase || []
+  const browseGigs = useMemo(() => gigState.browseGigs || [], [gigState.browseGigs])
+  const opportunities = useMemo(() => gigState.opportunities || [], [gigState.opportunities])
+  const savedGigIds = useMemo(() => gigState.savedGigIds || [], [gigState.savedGigIds])
+  const appliedGigIds = useMemo(() => gigState.appliedGigIds || [], [gigState.appliedGigIds])
+  const completedGigs = useMemo(() => gigState.completedGigs || [], [gigState.completedGigs])
+  const activeGigBase = useMemo(() => gigState.activeGigBase || [], [gigState.activeGigBase])
 
   const savedGigs = useMemo(
     () => browseGigs.filter(gig => savedGigIds.includes(gig.id)),

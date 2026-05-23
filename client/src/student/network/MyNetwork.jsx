@@ -419,7 +419,6 @@ function ProfileModal({ person, onClose, onConnect, connectSent }) {
                 gap: 6,
                 padding: '7px 18px',
                 borderRadius: 7,
-                border: '1.5px solid var(--border)',
                 background: isPlaying ? '#FEF2F2' : '#EF4444',
                 color: isPlaying ? '#EF4444' : 'white',
                 border: isPlaying ? '1.5px solid #FCA5A5' : '1.5px solid #DC2626',

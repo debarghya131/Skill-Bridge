@@ -270,20 +270,12 @@ export default function SkillHub() {
     if (skillFilter === 'beginner') return skill.stage === 'Beginner'
     return true
   })
-  const proCount = skills.filter(s => s.stage === 'Pro').length
-  const intermediateCount = skills.filter(s => s.stage === 'Intermediate').length
-  const beginnerCount = skills.filter(s => s.stage === 'Beginner').length
   const skillFilters = [
     { key: 'all', label: 'All Skills', count: skills.length, bg: 'var(--bg)', color: 'var(--dark)' },
     { key: 'verified', label: 'Verified', count: verifiedSkills.length, bg: '#D1FAE5', color: '#065F46' },
     { key: 'due', label: 'Need Renew', count: dueRenewSkills.length, bg: '#FEF3C7', color: '#92400E' },
     { key: 'expired', label: 'Expired', count: expiredSkills.length, bg: '#FEE2E2', color: '#991B1B' },
     { key: 'unverified', label: 'Unverified', count: unverifiedSkills.length, bg: '#E0E7FF', color: '#3730A3' },
-  ]
-  const levelFilters = [
-    { key: 'pro', label: 'Pro', count: proCount, bg: '#FDF4FF', color: '#7C3AED' },
-    { key: 'intermediate', label: 'Intermediate', count: intermediateCount, bg: '#EFF6FF', color: '#1D4ED8' },
-    { key: 'beginner', label: 'Beginner', count: beginnerCount, bg: '#F0FDF4', color: '#15803D' },
   ]
 
   const addSkill = () => {

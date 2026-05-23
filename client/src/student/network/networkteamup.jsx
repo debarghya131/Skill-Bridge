@@ -201,7 +201,7 @@ function ProfileModal({ person, onClose }) {
             <div style={{ background: '#000', borderRadius: 12, overflow: 'hidden', aspectRatio: '16/7', maxWidth: 460 }}>
               <video ref={videoRef} src={DEMO_VIDEO_URL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onEnded={() => setIsPlaying(false)} />
             </div>
-            <button onClick={togglePlay} style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 18px', borderRadius: 7, border: '1.5px solid var(--border)', background: isPlaying ? '#FEF2F2' : '#EF4444', color: isPlaying ? '#EF4444' : 'white', border: isPlaying ? '1.5px solid #FCA5A5' : '1.5px solid #DC2626', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+            <button onClick={togglePlay} style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 18px', borderRadius: 7, background: isPlaying ? '#FEF2F2' : '#EF4444', color: isPlaying ? '#EF4444' : 'white', border: isPlaying ? '1.5px solid #FCA5A5' : '1.5px solid #DC2626', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
               {isPlaying ? '⏹ Stop' : '▶ Play'}
             </button>
           </div>

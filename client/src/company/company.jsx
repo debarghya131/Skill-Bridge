@@ -415,7 +415,7 @@ export default function CompanyDashboard() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [companyName, location, navigate])
 
   useEffect(() => {
     let cancelled = false
