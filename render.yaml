@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: skillbridge-backend
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /ready
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: SESSION_TTL_DAYS
+        value: 30
+      - key: MAX_SESSIONS_PER_ACCOUNT
+        value: 5
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 120
+      - key: AUTH_RATE_LIMIT_MAX_REQUESTS
+        value: 12
+      - key: DAILY_USER_RATE_LIMIT_MAX_REQUESTS
+        value: 2000
+      - key: DAILY_SECTION_OPERATION_LIMIT
+        value: 2
+      - key: LOG_LEVEL
+        value: info
