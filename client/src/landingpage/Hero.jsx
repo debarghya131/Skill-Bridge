@@ -46,7 +46,7 @@ export default function Hero() {
           <div className="animate-fadeup">
             <span className="badge">
               <span style={{ width: 8, height: 8, background: 'var(--success)', borderRadius: '50%', display: 'inline-block' }} />
-              PS-05 · Tier-2/3 Opportunity Gap
+              · Tier-2/3 Opportunity Gap
             </span>
           </div>
 
