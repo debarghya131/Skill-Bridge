@@ -117,9 +117,18 @@ flowchart TD
 
 ```text
 skillbridge/
+├── .agents/
+├── .claude/
+│   └── settings.local.json
+├── .codex/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml
+├── .qodo/
+│   ├── agents/
+│   └── workflows/
+├── .vscode/
+│   └── settings.json
 ├── client/
 │   ├── public/
 │   │   ├── favicon.svg
@@ -135,14 +144,21 @@ skillbridge/
 │   │   │   ├── earning/
 │   │   │   ├── gig/
 │   │   │   ├── network/
+│   │   │   ├── profile/
 │   │   │   ├── skillhub/
 │   │   │   └── task/
 │   │   ├── ui/
 │   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
 │   ├── package.json
 │   └── vite.config.js
+├── docs/
+│   └── screenshots/
+├── scripts/
 ├── server/
 │   ├── config/
 │   ├── controllers/
@@ -150,6 +166,7 @@ skillbridge/
 │   ├── tests/
 │   ├── utils/
 │   ├── .env.example
+│   ├── package-lock.json
 │   ├── package.json
 │   └── server.js
 ├── .gitignore
