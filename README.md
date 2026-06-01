@@ -4,7 +4,7 @@ SkillBridge is a full-stack platform that connects Tier-2 and Tier-3 college stu
 
 ## 🔗 Live Demo
 
-https://skillbridge.debarghya.org
+https://skillbridge.debarghya.org    👈
 
 ## 💡 Motivation
 
