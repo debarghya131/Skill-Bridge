@@ -405,7 +405,7 @@ For the deployed Vercel frontend, set this project environment variable and
 redeploy the client:
 
 ```env
-VITE_API_URL=https://skillbridge-backend.onrender.com
+VITE_API_URL=https://skill-bridge-backend-irq4.onrender.com
 ```
 
 The Render backend must be running and should allow the production frontend
