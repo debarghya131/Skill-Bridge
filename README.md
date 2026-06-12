@@ -401,6 +401,16 @@ Example `client/.env`:
 VITE_API_URL=http://localhost:5000
 ```
 
+For the deployed Vercel frontend, set this project environment variable and
+redeploy the client:
+
+```env
+VITE_API_URL=https://skillbridge-backend.onrender.com
+```
+
+The Render backend must be running and should allow the production frontend
+through `CORS_ORIGIN=https://skillbridge.debarghya.org`.
+
 ## 🚧 Challenges Faced
 
 - Designing a two-sided platform that serves both students and companies without making the user flow confusing.

@@ -14,7 +14,9 @@ export async function apiRequest(path, options = {}) {
       ...fetchOptions,
     })
   } catch (error) {
-    const message = `Backend is not reachable at ${API_BASE_URL}. Start the server and try again.`
+    const message = import.meta.env.DEV
+      ? `Backend is not reachable at ${API_BASE_URL}. Start the server and try again.`
+      : 'The SkillBridge server is temporarily unavailable. Please try again shortly.'
 
     if (!silentErrorToast) {
       toast.error(message, { title: 'Connection Error' })

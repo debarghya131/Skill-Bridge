@@ -14,7 +14,7 @@ services:
       - key: MONGO_URL
         sync: false
       - key: CORS_ORIGIN
-        sync: false
+        value: https://skillbridge.debarghya.org
       - key: SESSION_TTL_DAYS
         value: 30
       - key: MAX_SESSIONS_PER_ACCOUNT
