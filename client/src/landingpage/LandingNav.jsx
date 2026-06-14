@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { registerSiteView } from './landingApi'
 
 const NAV_LINKS = [
   { label: 'Home', href: '#home' },
@@ -11,7 +12,32 @@ export default function LandingNav() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeHref, setActiveHref] = useState('#home')
+  const [siteViews, setSiteViews] = useState(null)
+  const [siteViewsLoading, setSiteViewsLoading] = useState(true)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    let active = true
+
+    registerSiteView()
+      .then(({ count }) => {
+        if (active && Number.isFinite(count)) {
+          setSiteViews(count)
+        }
+      })
+      .catch(() => {
+        // The navbar remains usable when the public counter is unavailable.
+      })
+      .finally(() => {
+        if (active) {
+          setSiteViewsLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     const onScroll = () => {
@@ -52,17 +78,36 @@ export default function LandingNav() {
         justifyContent: 'space-between',
         height: '68px',
       }}>
-        {/* Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <img
-            src="/logo.png"
-            alt="SkillBridge logo"
-            style={{ width: 36, height: 36, borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }}
-          />
-          <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--dark)', letterSpacing: '-0.03em' }}>
-            Skill<span style={{ color: 'var(--primary)' }}>Bridge</span>
-          </span>
-        </Link>
+        <div className="landing-nav-brand">
+          <Link to="/" className="landing-nav-logo">
+            <img
+              src="/logo.png"
+              alt="SkillBridge logo"
+              style={{ width: 36, height: 36, borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }}
+            />
+            <span className="landing-nav-wordmark" style={{ fontSize: 20, fontWeight: 800, color: 'var(--dark)', letterSpacing: '-0.03em' }}>
+              Skill<span style={{ color: 'var(--primary)' }}>Bridge</span>
+            </span>
+          </Link>
+
+          {(siteViewsLoading || siteViews !== null) && (
+            <span
+              className={`landing-nav-view-count${siteViewsLoading ? ' is-loading' : ''}`}
+              title={siteViewsLoading ? 'Loading website views' : `${siteViews.toLocaleString('en-IN')} total website views`}
+              aria-label={siteViewsLoading ? 'Loading website views' : `${siteViews.toLocaleString('en-IN')} total website views`}
+              aria-busy={siteViewsLoading}
+              aria-live="polite"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2.2 12s3.5-6 9.8-6 9.8 6 9.8 6-3.5 6-9.8 6-9.8-6-9.8-6Z" />
+                <circle cx="12" cy="12" r="2.7" />
+              </svg>
+              {siteViewsLoading
+                ? <span className="landing-nav-view-loader" aria-hidden="true" />
+                : <span>{siteViews.toLocaleString('en-IN')}</span>}
+            </span>
+          )}
+        </div>
 
         {/* Desktop nav links */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} className="desktop-nav landing-nav-desktop">

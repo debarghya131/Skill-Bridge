@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
-    "check": "node --check server.js && node --check controllers/companyController.js && node --check controllers/studentController.js && node --check controllers/taskBridgeController.js",
+    "check": "node --check server.js && node --check controllers/companyController.js && node --check controllers/studentController.js && node --check controllers/taskBridgeController.js && node --check controllers/siteMetricController.js && node --check models/SiteMetric.js",
     "test": "node --test tests/*.test.js",
     "test:watch": "node --test --watch tests/*.test.js"
   },

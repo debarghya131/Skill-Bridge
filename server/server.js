@@ -40,6 +40,7 @@ const {
   reviewCompanyTaskSubmission,
   submitStudentCompanyInterviewTask,
 } = require('./controllers/taskBridgeController')
+const { getSiteViewCount, incrementSiteViewCount } = require('./controllers/siteMetricController')
 const { createRateLimiter } = require('./utils/rateLimit')
 const { createRequestId, serializeError, writeLog } = require('./utils/logger')
 const { getBearerToken, readJsonBody } = require('./utils/request')
@@ -94,6 +95,31 @@ function sendJson(res, statusCode, payload) {
     ...buildCommonHeaders(res),
   })
   res.end(JSON.stringify(payload))
+}
+
+async function handlePublicApi(req, res, pathname) {
+  try {
+    if (req.method === 'GET' && pathname === '/api/site-views') {
+      const count = await getSiteViewCount()
+      sendJson(res, 200, { count })
+      return true
+    }
+
+    if (req.method === 'POST' && pathname === '/api/site-views') {
+      const count = await incrementSiteViewCount()
+      sendJson(res, 200, { count })
+      return true
+    }
+  } catch (error) {
+    sendJson(res, error.statusCode || 500, {
+      status: 'error',
+      message: error.message || 'Something went wrong',
+      requestId: res.requestId,
+    })
+    return true
+  }
+
+  return false
 }
 
 async function handleCompanyApi(req, res, pathname) {
@@ -378,6 +404,10 @@ const server = http.createServer(async (req, res) => {
       message: 'Too many requests. Please slow down and try again shortly.',
       requestId: req.requestId,
     })
+    return
+  }
+
+  if (await handlePublicApi(req, res, pathname)) {
     return
   }
 
